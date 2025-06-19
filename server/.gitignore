@@ -45,3 +45,4 @@ Thumbs.db
 *~
 *.iml
 /.idea
+/src/generated/prisma

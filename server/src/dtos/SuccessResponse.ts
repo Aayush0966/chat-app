@@ -4,22 +4,17 @@ export default class SuccessResponse<T = any> {
     public readonly data: T | null;
     public readonly code: number;
 
-    /**
-     * @param params.data
-     * @param params.message
-     * @param params.code
-     */
     constructor({
                     data = null,
                     message = 'OK',
                     code = 200,
                 }: {
-        data?: T;
+        data?: T | null;
         message?: string;
         code?: number;
     } = {}) {
         this.message = message;
-        this.data    = data ?? null;
-        this.code    = code;
+        this.data = data;
+        this.code = code;
     }
 }

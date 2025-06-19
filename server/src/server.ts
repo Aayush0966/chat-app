@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
 import morgan from 'morgan';
+import prisma from "./configs/prisma";
+import {authRouter} from "./routes/auth.routes";
 
 dotenv.config();
 
@@ -44,29 +46,37 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/status', (req: Request, res: Response) => {
-  res.json({
-    message: 'API is running',
-    version: '1.0.0',
-    environment: NODE_ENV,
-  });
+app.get('/api/status', async (req: Request, res: Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`; // lightweight check
+    res.json({
+      message: 'API is running',
+      version: '1.0.0',
+      environment: NODE_ENV,
+      database: 'connected',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'API is running, but DB connection failed',
+      environment: NODE_ENV,
+      database: 'disconnected',
+      error: (error as Error).message,
+    });
+  }
 });
 
+app.use('/api/auth', authRouter)
 
 const gracefulShutdown = (signal: string) => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
-  
-  const server = app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT} in ${NODE_ENV} mode`);
-  });
-  
-  server.close(() => {
-    console.log('Server closed. Exiting process.');
+  server.close(async () => {
+    console.log('Server closed.');
+    await prisma.$disconnect();
     process.exit(0);
   });
-  
+
   setTimeout(() => {
-    console.log('Forcing shutdown after timeout');
+    console.log('Force shutdown after timeout');
     process.exit(1);
   }, 10000);
 };
