@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import morgan from 'morgan';
 import prisma from "./configs/prisma";
 import {authRouter} from "./routes/auth.routes";
+import cookieParser from "cookie-parser"
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
+app.use(cookieParser())
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

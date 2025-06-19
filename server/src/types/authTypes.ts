@@ -6,7 +6,7 @@ export interface RegisterUserPayload {
     password: string;
 }
 
-export interface loginPayload {
+export interface LoginPayload {
     email?: string;
     phoneNumber?: string;
     password: string;
