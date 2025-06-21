@@ -1,5 +1,14 @@
+import { useForm } from "react-hook-form";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
+import type { LoginFormInputs } from "@/types/user";
+import { loginUser } from "@/services/api";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -8,8 +17,6 @@ import {
   CardDescription,
   CardFooter,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
 import {
   Form,
   FormField,
@@ -18,27 +25,31 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
-import { useForm } from "react-hook-form";
-import { NavLink } from "react-router-dom";
-
-interface Inputs {
-  phone: string;
-  password: string;
-  remember: boolean;
-}
 
 const Login = () => {
-  const form = useForm<Inputs>({
+  const form = useForm<LoginFormInputs>({
     defaultValues: {
-      phone: "",
+      phoneNumber: "",
       password: "",
       remember: false,
     },
   });
 
-  function onSubmit(data: Inputs) {
+  const navigate = useNavigate();
+  async function onSubmit(data: LoginFormInputs) {
     console.log(data);
+    try {
+      const res = await loginUser(data);
+      if (res?.data?.accessToken) {
+        localStorage.setItem("acessToken", res.data.accessToken);
+        navigate("/");
+      }
+    } catch (err) {
+      console.log(err);
+    }
   }
+
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="w-full flex justify-center bg-background rounded-xl shadow-2xl">
@@ -75,10 +86,10 @@ const Login = () => {
               >
                 <FormField
                   control={form.control}
-                  name="phone"
+                  name="phoneNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone</FormLabel>
+                      <FormLabel>phoneNumber</FormLabel>
                       <FormControl>
                         <div className="flex items-center gap-2 bg-input rounded-lg px-3 py-1 shadow-sm">
                           <p>🇳🇵</p>
@@ -108,14 +119,21 @@ const Login = () => {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <div className="flex items-center gap-2 bg-input rounded-lg shadow-sm py-1">
+                        <div className="flex items-center gap-2 bg-input rounded-lg shadow-sm py-1 relative">
                           <Input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             placeholder="••••••••"
                             className="border-none focus-visible:ring-0 !text-lg shadow-none"
                             required
                             {...field}
                           />
+                          <button
+                            type="button"
+                            className="mr-2"
+                            onClick={() => setShowPassword((e) => !e)}
+                          >
+                            {showPassword ? <Eye /> : <EyeOff />}
+                          </button>
                         </div>
                       </FormControl>
                       <FormMessage />
