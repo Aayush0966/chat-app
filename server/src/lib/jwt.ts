@@ -10,7 +10,6 @@ export interface JwtPayload extends DefaultJwtPayload {
     email: string;
     iat?: number;
     exp?: number;
-    role?: string;
 }
 
 /**

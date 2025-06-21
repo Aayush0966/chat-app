@@ -13,6 +13,23 @@ export const userServices = {
                 },
             })
         );
+    },
+    async getUserById(userId: string) {
+        const [error, user] = await prismaSafe(
+            prisma.user.findUnique({
+                where: {
+                    id: userId
+                }
+            })
+        )
+        if (error) {
+            return null;
+        }
+        if (user) {
+            return user
+        }
+        return null;
+
     }
 
 }
