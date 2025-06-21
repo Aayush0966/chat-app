@@ -1,4 +1,5 @@
 import {z} from "zod"
+import { AccountType } from "@prisma/client"
 
 export const registrationSchema = z.object({
     lastName: z.string().nonempty("Last name is required"),
@@ -8,8 +9,8 @@ export const registrationSchema = z.object({
     password: z.string().nonempty("Password is required").min(8).regex(
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
         "Password must include uppercase, lowercase, number, and special character"
-    )
-
+    ),
+    accountType: z.nativeEnum(AccountType).optional().default(AccountType.CREDENTIALS)
 })
 
 export const loginSchema = z.object({
@@ -24,4 +25,3 @@ export const loginSchema = z.object({
 export const forgetPasswordSchema = z.object(({
     email: z.string().email("Invalid email format").nonempty("Email is required")
 }))
-
