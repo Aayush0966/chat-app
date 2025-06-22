@@ -10,17 +10,18 @@ import type { FormInputProps } from "@/types/user";
 
 const Username = ({ control }: FormInputProps<any>) => {
   return (
+    <div className="flex justify-between gap-3">
     <FormField
       control={control}
-      name="username"
+      name="firstName"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Username</FormLabel>
+          <FormLabel>First Name</FormLabel>
           <FormControl>
             <div className="auth-input-container">
               <Input
                 type="text"
-                placeholder="skyrocket69"
+                placeholder="sky"
                 className="auth-input"
                 required
                 {...field}
@@ -31,6 +32,28 @@ const Username = ({ control }: FormInputProps<any>) => {
         </FormItem>
       )}
     />
+    <FormField
+      control={control}
+      name="lastName"
+      render={({ field }) => (
+        <FormItem>
+          <FormLabel>Last Name</FormLabel>
+          <FormControl>
+            <div className="auth-input-container">
+              <Input
+                type="text"
+                placeholder="rocket"
+                className="auth-input"
+                required
+                {...field}
+              />
+            </div>
+          </FormControl>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+    </div>
   );
 };
 

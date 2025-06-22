@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import type { RegisterFormInputs } from "@/types/user";
 import { registerUser } from "@/services/api";
 
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -19,22 +20,33 @@ import Username from "@/components/Username";
 import Email from "@/components/Email";
 import Phone from "@/components/Phone";
 import Password from "@/components/Password";
+import { useEffect } from "react";
 
 const Register = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
+      navigate("/home");
+    }
+  }, [navigate]);
+
   const form = useForm<RegisterFormInputs>({
     defaultValues: {
-      username: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phoneNumber: "",
       password: "",
     },
   });
 
-  const navigate = useNavigate();
   async function onSubmit(data: RegisterFormInputs) {
     console.log(data);
     try {
       await registerUser(data);
+      toast.success("Successfully Registered!");
       navigate("/login");
     } catch (err) {
       console.log(err);

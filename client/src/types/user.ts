@@ -3,11 +3,11 @@ import type { FieldValues, Control } from "react-hook-form";
 export interface LoginFormInputs {
   phoneNumber: string;
   password: string;
-  remember: boolean;
 }
 
 export interface RegisterFormInputs {
-  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phoneNumber: string;
   password: string;

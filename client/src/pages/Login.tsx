@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import type { LoginFormInputs } from "@/types/user";
 import { loginUser } from "@/services/api";
 
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -16,17 +17,25 @@ import {
 import { Form } from "@/components/ui/form";
 import Phone from "@/components/Phone";
 import Password from "@/components/Password";
+import { useEffect } from "react";
 
 const Login = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
+      navigate("/home");
+    }
+  }, [navigate]);
+
   const form = useForm<LoginFormInputs>({
     defaultValues: {
       phoneNumber: "",
       password: "",
-      remember: false,
     },
   });
 
-  const navigate = useNavigate();
   async function onSubmit(data: LoginFormInputs) {
     console.log(data);
     try {
@@ -36,6 +45,7 @@ const Login = () => {
           "accessToken",
           JSON.stringify(res.data.accessToken)
         );
+        toast.success("Login Successfull!");
         navigate("/home");
       }
     } catch (err) {

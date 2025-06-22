@@ -14,7 +14,8 @@ export const loginUser = async (data: LoginFormInputs) => {
 
 export const registerUser = async (data: RegisterFormInputs) => {
   const res = await axios.post(`${API_URL}/register`, {
-    username: data.username,
+    firstName: data.firstName,
+    lastName: data.lastName,
     email: data.email,
     phoneNumber: data.phoneNumber,
     password: data.password,
