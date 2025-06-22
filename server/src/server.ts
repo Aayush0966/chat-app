@@ -21,10 +21,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
 app.use(cookieParser())
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -32,14 +33,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   if (NODE_ENV === 'development') {
     console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   }
   next();
 });
 
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -48,7 +49,7 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/status', async (req: Request, res: Response) => {
+app.get('/api/status', async (_req: Request, res: Response) => {
   try {
     await prisma.$queryRaw`SELECT 1`; // lightweight check
     res.json({

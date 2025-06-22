@@ -1,12 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-import { z, ZodError, ZodTypeAny } from 'zod';
-import { StatusCodes } from 'http-status-codes';
+import {NextFunction, Request, Response} from 'express';
+import {ZodError, ZodTypeAny} from 'zod';
+import {StatusCodes} from 'http-status-codes';
 
 export function validateData<T extends ZodTypeAny>(schema: T) {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
-            const parsedData = schema.parse(req.body);
-            req.body = parsedData; // optionally replace raw input with parsed data
+            req.body = schema.parse(req.body); // optionally replace raw input with parsed data
             next();
         } catch (error) {
             if (error instanceof ZodError) {

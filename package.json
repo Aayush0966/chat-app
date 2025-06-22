@@ -7,7 +7,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test:all": "npm --prefix server check && npm --prefix client check",
+    "test:all": "npm --prefix server run check && npm --prefix client run check",
     "prepare": "husky install"
   },
   "repository": {

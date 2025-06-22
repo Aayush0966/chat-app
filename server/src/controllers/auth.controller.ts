@@ -3,9 +3,7 @@ import {authService} from "../services/auth.service";
 import {comparePassword, hashPassword} from "../lib/password";
 import {userServices} from "../services/user.services";
 import SuccessResponse from "../dtos/SuccessResponse";
-import jwt from "jsonwebtoken";
 import {generateTokenAndUpdate, signJwt, verifyJwt} from "../lib/jwt";
-import prisma from "../configs/prisma";
 import {sendTransactionalEmail} from "../lib/email";
 import {AccountType} from "@prisma/client";
 
@@ -30,6 +28,10 @@ export const authController = {
             userData.email,
             userData.phoneNumber
         );
+
+        if (error) {
+            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+        }
 
         if (existingUser) {
             res.status(400).json(new SuccessResponse({message: "Phone number or email is already used", code: 400}));
@@ -56,6 +58,10 @@ export const authController = {
         }
 
         const [error, existingUser] = await userServices.getUserByEmailOrPhoneNumber(email, phoneNumber);
+
+        if (error) {
+            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+        }
 
         if (!existingUser) {
             res.status(400).json(new SuccessResponse({message: "Email or Phone number is incorrect.", code: 400}));
@@ -107,6 +113,10 @@ export const authController = {
         }
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(decodedToken.email);
+
+        if (error) {
+            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+        }
 
         if (!user || user.refreshToken !== token) {
             res.status(401).json(new SuccessResponse({message: "Invalid session", code: 401}));
@@ -170,6 +180,11 @@ export const authController = {
         }
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(email);
+
+        if (error) {
+            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+        }
+
         if (!user) {
             res.status(401).json(new SuccessResponse({message: "User not found"}))
             return;

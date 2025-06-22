@@ -18,5 +18,3 @@ export default class SuccessResponse<T = any> {
         this.code = code;
     }
 }
-
-import {StandardSchemaV1} from "zod/dist/types/v3/standard-schema";
