@@ -7,9 +7,15 @@
     "start": "ts-node src/server.ts",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
+
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck",
+
     "prisma:generate": "prisma generate",
     "prisma:migrate": "sh -c 'read -p \"Migration name: \" name && npx prisma migrate dev --name $name'"
   },
+
+
   "keywords": [],
   "author": "",
   "license": "ISC",

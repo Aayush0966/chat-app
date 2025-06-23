@@ -1,10 +1,12 @@
 import { LoginPayload, RegisterUserPayload } from "../types/auth.types";
+
 import prisma from "../configs/prisma";
 import { prismaSafe } from "../lib/prismaSafe";
 import { AccountType } from "@prisma/client";
 import { generateOTP } from "../utils/helper";
 import { userServices } from "./user.services";
-import { comparePassword, hashPassword } from "../lib/password";
+import { hashPassword } from "../lib/password";
+import {RegisterUserPayload} from "../types/authTypes";
 
 export const authService = {
     async registerUser(registerData: RegisterUserPayload, accountType: AccountType) {
@@ -64,7 +66,7 @@ export const authService = {
             return null;
         }
 
-        return code;
+        return newOtp?.code;
     },
 
     async validateOTP(otp: string, userId: string) {
@@ -129,7 +131,7 @@ export const authService = {
 
         const hashedPassword = await hashPassword(newPassword);
 
-        const [updateError, updatedUser] = await prismaSafe(
+        const [updateError] = await prismaSafe(
             prisma.user.update({
                 where: {
                     email
@@ -146,4 +148,5 @@ export const authService = {
 
         return { success: true, message: "Password has been reset successfully" };
     },
+
 };
