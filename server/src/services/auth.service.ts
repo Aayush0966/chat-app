@@ -1,3 +1,5 @@
+import { LoginPayload, RegisterUserPayload } from "../types/auth.types";
+
 import prisma from "../configs/prisma";
 import { prismaSafe } from "../lib/prismaSafe";
 import { AccountType } from "@prisma/client";

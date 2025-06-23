@@ -5,7 +5,7 @@ import {StatusCodes} from 'http-status-codes';
 export function validateData<T extends ZodTypeAny>(schema: T) {
     return (req: Request, res: Response, next: NextFunction) => {
         try {
-            req.body = schema.parse(req.body);
+            req.body = schema.parse(req.body); // optionally replace raw input
             next();
         } catch (error) {
             if (error instanceof ZodError) {
