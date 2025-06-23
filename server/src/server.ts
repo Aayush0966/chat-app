@@ -5,6 +5,8 @@ import morgan from 'morgan';
 import prisma from "./configs/prisma";
 import {authRouter} from "./routes/auth.routes";
 import cookieParser from "cookie-parser"
+import responseHandler from "./middlewares/response.middleware";
+import {userRoutes} from "./routes/user.routes";
 
 dotenv.config();
 
@@ -21,7 +23,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
 app.use(cookieParser())
-
+app.use((req: Request, res: Response, next: NextFunction) => responseHandler(req, res, next));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -51,7 +53,7 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.get('/api/status', async (_req: Request, res: Response) => {
   try {
-    await prisma.$queryRaw`SELECT 1`; // lightweight check
+    await prisma.$queryRaw`SELECT 1`;
     res.json({
       message: 'API is running',
       version: '1.0.0',
@@ -69,6 +71,7 @@ app.get('/api/status', async (_req: Request, res: Response) => {
 });
 
 app.use('/api/auth', authRouter)
+app.use("/api/users", userRoutes)
 
 const gracefulShutdown = (signal: string) => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
