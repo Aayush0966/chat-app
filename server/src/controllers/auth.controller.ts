@@ -1,5 +1,5 @@
 import {Request, Response} from "express";
-import {authService} from "../services/auth.service";
+import {authServices} from "../services/auth.services";
 import {comparePassword, hashPassword} from "../lib/password";
 import {userServices} from "../services/user.services";
 import {generateTokenAndUpdate, signJwt, verifyJwt} from "../lib/jwt";
@@ -40,7 +40,7 @@ export const authController = {
             return;
         }
 
-        const newUser = await authService.registerUser(userData, accountType);
+        const newUser = await authServices.registerUser(userData, accountType);
 
         if (newUser.success) {
             res.success({message: "User registered successfully", code: HTTP.CREATED});
@@ -159,7 +159,7 @@ export const authController = {
             return;
         }
 
-        const otp = await authService.forgetPassword(user.id);
+        const otp = await authServices.forgetPassword(user.id);
 
         if (!otp) {
             res.error({error: "Something went wrong", code: HTTP.INTERNAL});
@@ -198,7 +198,7 @@ export const authController = {
             res.error({error: "User not found", code: HTTP.UNAUTHORIZED});
             return;
         }
-        const valid = await authService.validateOTP(OTP, user.id);
+        const valid = await authServices.validateOTP(OTP, user.id);
 
         const tempToken = signJwt(
             {userId: user.id,
@@ -234,7 +234,7 @@ export const authController = {
             res.error({error: "Token has been expired or invalid", code: HTTP.UNAUTHORIZED});
             return;
         }
-        const valid = await authService.resetPassword(decodedToken?.email ? decodedToken?.email: '', password);
+        const valid = await authServices.resetPassword(decodedToken?.email ? decodedToken?.email: '', password);
 
         if (!valid.success) {
             res.error({error: valid.message, code: HTTP.UNAUTHORIZED});

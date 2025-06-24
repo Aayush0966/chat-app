@@ -5,11 +5,16 @@ import {userServices} from "../services/user.services";
 
 export function validateUser() {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const token = req.headers['authorization']?.replace("Bearer", "")
+        const authHeader = req.headers['authorization'];
+        const token = authHeader?.startsWith('Bearer ') 
+            ? authHeader.substring(7)
+            : null;
+            
         if (!token) {
             res.status(401).json(new SuccessResponse({message: "Token is required"}));
             return;
         }
+        
         const decodedToken = verifyJwt(token);
 
         if (!decodedToken) {
@@ -17,13 +22,12 @@ export function validateUser() {
             return;
         }
 
-        const user = await userServices.getUserById(decodedToken.userId)
+        const user = await userServices.getUserById(decodedToken.sub); // Use 'sub' instead of 'userId'
         if (!user) {
             res.status(401).json(new SuccessResponse({message: "Invalid token"}));
             return;
         }
-        req.body.email = user.email;
-        req.body.userId = user.id;
+        req.user = user;
         next();
     }
 }
