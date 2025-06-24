@@ -7,6 +7,7 @@ import {authRouter} from "./routes/auth.routes";
 import cookieParser from "cookie-parser"
 import responseHandler from "./middlewares/response.middleware";
 import {userRoutes} from "./routes/user.routes";
+import {chatRouter} from "./routes/chat.routes";
 
 dotenv.config();
 
@@ -72,7 +73,7 @@ app.get('/api/status', async (_req: Request, res: Response) => {
 
 app.use('/api/auth', authRouter)
 app.use("/api/users", userRoutes)
-
+app.use("/api/chats", chatRouter)
 const gracefulShutdown = (signal: string) => {
   console.log(`\nReceived ${signal}. Starting graceful shutdown...`);
   server.close(async () => {
