@@ -4,10 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/server.ts",
+    "start": "npx prisma generate && ts-node src/server.ts",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck",
 
