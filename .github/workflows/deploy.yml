@@ -17,7 +17,7 @@ jobs:
         run: echo ${{ secrets.REGISTRY_PASSWORD }} | docker login backendchat.azurecr.io -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t backendchat.azurecr.io/chatapp:latest .
+        run: docker build -t backendchat.azurecr.io/chatapp:latest -f server/Dockerfile server
 
       - name: Push Docker image
         run: docker push backendchat.azurecr.io/chatapp:latest
