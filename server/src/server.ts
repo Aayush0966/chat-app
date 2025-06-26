@@ -12,7 +12,7 @@ import {chatRouter} from "./routes/chat.routes";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const corsOptions = {
@@ -101,9 +101,9 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   process.exit(1);
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT} in ${NODE_ENV} mode`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
+  console.log(`📊 Health check available at http://0.0.0.0:${PORT}/health`);
 });
 
 export default app;
