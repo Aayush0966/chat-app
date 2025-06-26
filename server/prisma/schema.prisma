@@ -84,7 +84,9 @@ model ChatParticipant {
   chatId    String
   user      User     @relation(fields: [userId], references: [id])
   chat      Chat     @relation(fields: [chatId], references: [id])
+  deleted   Boolean  @default(false)
   joinedAt  DateTime @default(now())
+
 }
 
 model Message {
