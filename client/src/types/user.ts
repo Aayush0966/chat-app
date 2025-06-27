@@ -20,3 +20,20 @@ export interface ForgotFormInputs {
 export interface FormInputProps<T extends FieldValues> {
   control: Control<T>;
 }
+
+export interface UserSearchQuery {
+  query: string;
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface CreateChat {
+  creatorId: string;
+  participantIds: string[];
+  isGroup?: boolean;
+  name?: string;
+}
