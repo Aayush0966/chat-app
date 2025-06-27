@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 const RootLayout = () => {
   return (
-    <div className="min-h-screen flex lg:p-10 bg-accent ">
+    <div className="min-h-screen max-h-screen flex lg:p-10 bg-accent">
       <Toaster
         toastOptions={{
           style: {

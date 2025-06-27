@@ -69,9 +69,12 @@ const Login = () => {
             <Phone control={form.control} />
             <Password control={form.control} />
             <div className="flex justify-end mt-2">
-              <a href="#" className="text-sm">
+              <NavLink
+                to="/forgot-password"
+                className="text-sm"
+              >
                 Forgot password?
-              </a>
+              </NavLink>
             </div>
             <Button type="submit" className="auth-button">
               Sign In

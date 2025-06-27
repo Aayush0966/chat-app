@@ -1,8 +1,10 @@
 import axios from "axios";
 import type { LoginFormInputs } from "@/types/user";
 import type { RegisterFormInputs } from "@/types/user";
+import type { ForgotFormInputs } from "@/types/user";
 
-const API_URL = "http://localhost:8000/api/auth";
+const API_URL =
+  "https://chatapp-backend-dsa2fkh8e4ahgdhz.southeastasia-01.azurewebsites.net/api/auth";
 
 export const loginUser = async (data: LoginFormInputs) => {
   const res = await axios.post(`${API_URL}/login`, {
@@ -19,6 +21,13 @@ export const registerUser = async (data: RegisterFormInputs) => {
     email: data.email,
     phoneNumber: data.phoneNumber,
     password: data.password,
+  });
+  return res.data;
+};
+
+export const forgotPassword = async (data: ForgotFormInputs) => {
+  const res = await axios.post(`${API_URL}/forget-password`, {
+    email: data.email,
   });
   return res.data;
 };

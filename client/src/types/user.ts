@@ -13,6 +13,10 @@ export interface RegisterFormInputs {
   password: string;
 }
 
+export interface ForgotFormInputs {
+  email: string;
+}
+
 export interface FormInputProps<T extends FieldValues> {
   control: Control<T>;
 }
