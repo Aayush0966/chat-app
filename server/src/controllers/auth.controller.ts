@@ -10,7 +10,7 @@ import {HTTP} from "../utils/httpStatus";
 
 export const authController = {
     register: async (req: Request, res: Response): Promise<void> => {
-        const {firstName, lastName, phoneNumber, email, password, accountType = AccountType.CREDENTIALS} = req.body;
+        const { firstName, lastName, phoneNumber, email, password, accountType = AccountType.CREDENTIALS } = req.body;
 
         if (!firstName || !lastName || !phoneNumber || !email || !password) {
             res.error({error: "Missing required fields", code: HTTP.BAD_REQUEST});
@@ -52,7 +52,7 @@ export const authController = {
         }
     },
     login: async (req: Request, res: Response): Promise<void> => {
-        const {email, phoneNumber, password} = req.body;
+        const { email, phoneNumber, password } = req.body;
 
         if ((!email && !phoneNumber) || !password) {
             res.error({error: "Missing required fields", code: HTTP.BAD_REQUEST});
@@ -81,16 +81,26 @@ export const authController = {
         }
 
         try {
-            const {accessToken, refreshToken} = await generateTokenAndUpdate(existingUser)
-            res.cookie("token", refreshToken, {
+            const { accessToken, refreshToken } = await generateTokenAndUpdate(existingUser)
+            res.cookie("_sid", accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+                maxAge: 15 * 60 * 1000,
+            });
+
+
+            res.cookie("_rid", refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
                 maxAge: 1000 * 60 * 60 * 72,
             })
+
+            const {password,verificationOTP, refreshToken: refreshUserToken, ...safeUser} = existingUser;
             res.success({
                 message: "Login successfully",
-                data: {accessToken},
+                data: {safeUser},
                 code: HTTP.OK
             });
 
@@ -128,9 +138,17 @@ export const authController = {
             return;
         }
 
-        const {accessToken, refreshToken} = await generateTokenAndUpdate(user);
+        const { accessToken, refreshToken } = await generateTokenAndUpdate(user);
 
-        res.cookie("token", refreshToken, {
+        res.cookie("_sid", accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 15 * 60 * 1000,
+        });
+
+
+        res.cookie("_rid", refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
@@ -145,7 +163,7 @@ export const authController = {
     },
 
     forgetPassword: async (req: Request, res: Response): Promise<void> => {
-        const {email, phoneNumber} = req.body;
+        const { email, phoneNumber } = req.body;
 
         if (!email && !phoneNumber) {
             res.error({error: "Email or phone number is required.", code: HTTP.BAD_REQUEST});
@@ -154,7 +172,13 @@ export const authController = {
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(email, phoneNumber);
 
-        if (error || !user) {
+
+        if (error) {
+            res.error({error, code: HTTP.INTERNAL});
+            return;
+        }
+
+        if (!user ) {
             res.error({error: "Email or Phone number is incorrect.", code: HTTP.BAD_REQUEST});
             return;
         }
@@ -181,7 +205,7 @@ export const authController = {
         });
     },
     validateOTP: async (req: Request, res: Response): Promise<void> => {
-        const {OTP, email} = req.body;
+        const { OTP, email } = req.body;
         if (!OTP || !email) {
             res.error({error: "OTP and email is required", code: HTTP.UNAUTHORIZED});
             return;
@@ -201,9 +225,11 @@ export const authController = {
         const valid = await authServices.validateOTP(OTP, user.id);
 
         const tempToken = signJwt(
-            {userId: user.id,
-            email: user.email,
-            sub: user.id},
+            {
+                userId: user.id,
+                email: user.email,
+                sub: user.id
+            },
             '15m',
             process.env.JWT_RESET_SECRET
         );
@@ -243,5 +269,11 @@ export const authController = {
         if (valid.success) {
             res.success({message: valid.message, code: HTTP.OK});
         }
+    },
+    logout: async (req: Request, res: Response): Promise<void> => {
+        res.cookie('_sid', '', { maxAge: 0 });
+        res.cookie('_rid', '', { maxAge: 0 });
+
+        res.success({success: true, message: "Logout successfully", code: HTTP.OK})
     }
 }
