@@ -1,11 +1,12 @@
 import {prismaSafe} from "../lib/prismaSafe";
 import prisma from "../configs/prisma";
 import {HTTP} from "../utils/httpStatus";
+import { Message } from "../types/chat.types";
 
 
 export const messageServices = {
     async sendMessage(message: Message) {
-        await prismaSafe(
+        return await prismaSafe(
             prisma.message.create({
                 data: message
             })

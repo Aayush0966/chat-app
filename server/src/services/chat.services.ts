@@ -1,5 +1,6 @@
 import {prismaSafe} from "../lib/prismaSafe";
 import prisma from "../configs/prisma";
+import { Chat } from "../types/chat.types";
 
 export const chatServices = {
     async createChat(chat: Chat) {
