@@ -24,7 +24,7 @@ export const chatController = {
                     const [reactivateErr, reactivatedChat] = await chatServices.reactivateChatForUser(creatorId, existingChat.id);
                     
                     if (reactivateErr) {
-                        res.error({error: reactivateErr, code: HTTP.BAD_REQUEST});
+                        res.error({error: reactivateErr, code: HTTP.INTERNAL});
                         return;
                     }
 
@@ -44,7 +44,7 @@ export const chatController = {
 
         const [error, data] = await chatServices.createChat({name, participantIds, creatorId, isGroup});
         if (error) {
-            res.error({error: error, code: HTTP.BAD_REQUEST})
+            res.error({error: error, code: HTTP.INTERNAL})
             return;
         }
         if (!data) {
@@ -61,7 +61,7 @@ export const chatController = {
         }
         const [error, chat] = await chatServices.getChatById(String(chatId));
         if (error) {
-            res.error({error: error, code: HTTP.BAD_REQUEST})
+            res.error({error: error, code: HTTP.INTERNAL})
         }
         if (!chat) {
             res.error({error: "Chat not found", code: HTTP.NOT_FOUND})
@@ -81,12 +81,12 @@ export const chatController = {
         const [error, chatParticipants] = await chatServices.getChatsByUser(userId);
 
         if (error) {
-            res.error({error, code: HTTP.BAD_REQUEST});
+            res.error({error, code: HTTP.INTERNAL});
             return;
         }
 
         if (!chatParticipants || chatParticipants.length === 0) {
-            res.success({message: "No chats found", data: [], code: HTTP.OK});
+            res.success({message: "No chats found", data: [], code: HTTP.NOT_FOUND});
             return;
         }
 
@@ -126,7 +126,7 @@ export const chatController = {
         const [error, chatData] = await chatServices.getChatParticipantsByChatId(chatId, userId);
 
         if (error) {
-            res.error({error: error, code: HTTP.BAD_REQUEST})
+            res.error({error: error, code: HTTP.INTERNAL})
             return;
         }
 
@@ -141,7 +141,7 @@ export const chatController = {
 
         const [err, data] = await chatServices.removeChat(userId, chatId);
         if (err) {
-            res.error({error: err, code: HTTP.BAD_REQUEST})
+            res.error({error: err, code: HTTP.INTERNAL})
             return;
         }
 

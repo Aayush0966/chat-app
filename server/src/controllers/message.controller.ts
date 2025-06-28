@@ -29,6 +29,7 @@ export const messageController = {
 
         if (!sender) {
             res.error({ error: "Sender not found", code: HTTP.UNAUTHORIZED })
+            return;
         }
 
         if (messageType === "TEXT") {
@@ -36,22 +37,56 @@ export const messageController = {
                 senderId: userId,
                 type: "TEXT",
                 chatId,
-
+                text
             }
-            const [result, error] = await messageServices.sendMessage(message);
+            const [error, result] = await messageServices.sendMessage(message);
+
             if (error) {
-                res.error({ error: error, code: HTTP.BAD_REQUEST })
-            }
-            if (!result || result?.length == 0) {
-                res.error({ error: "Something went wrong while sending message", code: HTTP.INTERNAL })
+                res.error({ error, code: HTTP.INTERNAL })
+                return;
             }
 
-            if (result) {
-                res.success({ success: true, message: "Message sent successfully", code: HTTP.CREATED })
+            if (!result) {
+                res.error({ error: "Failed to create message", code: HTTP.INTERNAL })
+                return;
             }
 
+            res.success({
+                success: true,
+                message: "Message sent successfully",
+                code: HTTP.CREATED,
+                data: result
+            });
+            return;
         }
 
 
     },
+    getMessageByChat: async (req: Request, res: Response): Promise<void> => {
+        const chatId = req.params.chatId;
+        const { cursor, limit = 20 } = req.query;
+        if (!chatId) {
+            res.error({ error: "chatId is required", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const [error, result] = await messageServices.getMessageByChatId(String(chatId), Number(limit), cursor ? String(cursor) : undefined);
+
+        if (error) {
+            res.error({ error, code: HTTP.INTERNAL });
+            return;
+        }
+
+        if (!result || result.length === 0) {
+            res.error({ error: "No messages found", code: HTTP.NOT_FOUND });
+            return;
+        }
+
+        res.success({
+            success: true,
+            message: "Messages fetched successfully",
+            code: HTTP.OK,
+            data: result
+        });
+    }
 };

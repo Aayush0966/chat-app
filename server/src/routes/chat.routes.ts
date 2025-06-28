@@ -7,10 +7,10 @@ import {chatServices} from "../services/chat.services";
 
 export const chatRouter = express.Router();
 
-chatRouter.post("/", validateUser(), validateData(chatSchema), chatController.createChat);
-chatRouter.get("/", validateUser(), chatController.getChatById);
-chatRouter.get("/user", validateUser(), chatController.getChatsByUser);
-chatRouter.delete("/:chatId", validateUser(), chatController.deleteChatForUser)
+chatRouter.post("/", validateUser, validateData(chatSchema), chatController.createChat);
+chatRouter.get("/", validateUser, chatController.getChatById);
+chatRouter.get("/user", validateUser, chatController.getChatsByUser);
+chatRouter.delete("/:chatId", validateUser, chatController.deleteChatForUser)
 
 
 

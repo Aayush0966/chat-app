@@ -13,7 +13,7 @@ export const messageServices = {
         )
     },
     async getMessageByChatId(chatId:string, limit: number = 20, cursor?: string ) {
-        await prismaSafe(
+        return await prismaSafe(
             prisma.message.findMany({
                 where: {
                     chatId

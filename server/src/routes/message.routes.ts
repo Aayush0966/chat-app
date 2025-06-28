@@ -4,4 +4,5 @@ import { messageController } from "../controllers/message.controller";
 
 export const messageRouter = express.Router();
 
-messageRouter.post("/", validateUser(), messageController.sendMessage)
+messageRouter.post("/", validateUser, messageController.sendMessage)
+messageRouter.get("/:chatId", validateUser, messageController.getMessageByChat)
