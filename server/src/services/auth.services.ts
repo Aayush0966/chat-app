@@ -6,9 +6,8 @@ import { AccountType } from "@prisma/client";
 import { generateOTP } from "../utils/helper";
 import { userServices } from "./user.services";
 import { hashPassword } from "../lib/password";
-import {RegisterUserPayload} from "../types/authTypes";
 
-export const authService = {
+export const authServices = {
     async registerUser(registerData: RegisterUserPayload, accountType: AccountType) {
         const [transactionError, result] = await prismaSafe(
             prisma.$transaction(async (tx) => {

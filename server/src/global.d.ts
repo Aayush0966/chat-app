@@ -7,6 +7,12 @@ declare global {
             success: <T = any>(payload: ConstructorParameters<typeof SuccessResponse<T>>[0]) => void;
             error: <D = any>(payload: ConstructorParameters<typeof ErrorResponse<D>>[0]) => void;
         }
+        interface Request {
+            user? : {
+                id: string,
+                email: string
+            }
+        }
     }
 }
 

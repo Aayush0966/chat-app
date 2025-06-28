@@ -18,5 +18,8 @@ export const userController = {
         if (result.success) {
             res.success({message: "User fetched successfully", data: result.data, code:HTTP.OK})
         }
-    }
+    },
+    
+
+
 }
