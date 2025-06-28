@@ -6,7 +6,7 @@ export const userController = {
     searchUser: async (req:Request, res: Response): Promise<void> => {
         const firstName = req.query.q;
         if (!firstName) {
-            res.error({error: "Query is required!", code: HTTP.BAD_REQUEST})
+            res.error({error: "Query is required!", code: HTTP.BAD_REQUEST});
             return;
         }
         const result = await userServices.findUser(String(firstName));
@@ -15,11 +15,7 @@ export const userController = {
             res.error({error: result.message, code: result.statusCode});
             return;
         }
-        if (result.success) {
-            res.success({message: "User fetched successfully", data: result.data, code:HTTP.OK})
-        }
-    },
-    
-
-
+        
+        res.success({message: "User fetched successfully", data: result.data, code:HTTP.OK});
+    }
 }

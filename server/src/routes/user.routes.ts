@@ -5,4 +5,4 @@ import {validateUser} from "../middlewares/auth.middleware";
 
 export const userRoutes = express.Router();
 
-userRoutes.get("/search", validateUser(), userController.searchUser);
+userRoutes.get("/search", validateUser, userController.searchUser);

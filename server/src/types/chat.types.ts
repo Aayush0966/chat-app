@@ -1,16 +1,18 @@
+import { MessageType } from "@prisma/client";
+
 type UserId = string;
 
-interface Chat {
+export interface Chat {
     name?: string;
     creatorId: UserId;
     participantIds: UserId[];
     isGroup: boolean;
 }
 
-interface Message {
+export interface Message {
     senderId: string;
-    receiverId: string;
     chatId: string;
-    text: string;
-    attachment: string;
+    type: MessageType
+    text?: string;
+    attachment?: string;
 }

@@ -96,9 +96,11 @@ export const authController = {
                 sameSite: "strict",
                 maxAge: 1000 * 60 * 60 * 72,
             })
+
+            const {password,verificationOTP, refreshToken: refreshUserToken, ...safeUser} = existingUser;
             res.success({
                 message: "Login successfully",
-                data: {accessToken},
+                data: {safeUser},
                 code: HTTP.OK
             });
 
@@ -170,7 +172,13 @@ export const authController = {
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(email, phoneNumber);
 
-        if (error || !user) {
+
+        if (error) {
+            res.error({error, code: HTTP.INTERNAL});
+            return;
+        }
+
+        if (!user ) {
             res.error({error: "Email or Phone number is incorrect.", code: HTTP.BAD_REQUEST});
             return;
         }
