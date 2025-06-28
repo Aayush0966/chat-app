@@ -3,8 +3,6 @@ import {User} from "@prisma/client";
 import prisma from "../configs/prisma";
 
 const ACCESS_SECRET = process.env.JWT_SECRET || 'your_default_access_secret';
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your_default_refresh_secret';
-
 export interface JwtPayload extends DefaultJwtPayload {
     sub: string;
     email: string;

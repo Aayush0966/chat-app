@@ -1,8 +1,5 @@
 // This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// Learn more at: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -13,12 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ENUMS
 enum AccountType {
   GOOGLE
   FACEBOOK
   CREDENTIALS
   GITHUB
 }
+
+enum ReadType {
+  READ
+  UNREAD
+}
+
 
 model User {
   id              String    @id @default(cuid())
@@ -30,7 +34,12 @@ model User {
   refreshToken    String?
   verificationOTP String?
   account         Account?  @relation("UserAccount")
-  otp             otp?      @relation
+  otp             Otp?      @relation
+  createdChats    Chat[]    @relation("ChatCreator")
+  sentMessages    Message[] @relation("MessageSender")
+  chatParticipants ChatParticipant[]
+  messageReads    MessageRead[]
+  messageReactions MessageReaction[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
@@ -44,7 +53,7 @@ model Account {
   updatedAt   DateTime    @updatedAt
 }
 
-model otp {
+model Otp {
   id        String   @id @default(cuid())
   userId    String   @unique
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -54,4 +63,60 @@ model otp {
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Chat {
+  id            String            @id @default(cuid())
+  name          String?
+  isGroup       Boolean           @default(false)
+  creatorId     String?
+  creator       User?             @relation("ChatCreator", fields: [creatorId], references: [id])
+  participants  ChatParticipant[]
+  messages      Message[]
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+}
+
+model ChatParticipant {
+  id        String   @id @default(cuid())
+  userId    String
+  chatId    String
+  user      User     @relation(fields: [userId], references: [id])
+  chat      Chat     @relation(fields: [chatId], references: [id])
+  joinedAt  DateTime @default(now())
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  chatId     String
+  text       String?
+  attachment String?
+  sentAt     DateTime @default(now())
+
+  sender     User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  chat       Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  reads      MessageRead[]
+  reactions  MessageReaction[]
+}
+
+model MessageRead {
+  id         String   @id @default(cuid())
+  messageId  String
+  userId     String
+  readAt     DateTime @default(now())
+
+  message    Message  @relation(fields: [messageId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model MessageReaction {
+  id         String   @id @default(cuid())
+  messageId  String
+  userId     String
+  emoji      String
+  reactedAt  DateTime @default(now())
+
+  message    Message  @relation(fields: [messageId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
 }

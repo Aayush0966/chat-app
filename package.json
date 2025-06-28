@@ -1,0 +1,25 @@
+{
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "name": "chat-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:all": "npm --prefix server run check && npm --prefix client run check",
+    "prepare": "husky install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aayush0966/chat-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Aayush0966/chat-app/issues"
+  },
+  "homepage": "https://github.com/Aayush0966/chat-app#readme"
+}
