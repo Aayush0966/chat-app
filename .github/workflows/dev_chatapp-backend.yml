@@ -1,0 +1,30 @@
+name: Build and Deploy to Azure Web App from dev branch
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure Container Registry
+        run: echo ${{ secrets.REGISTRY_PASSWORD }} | docker login backendchat.azurecr.io -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t backendchat.azurecr.io/chatapp:latest -f server/Dockerfile server
+
+      - name: Push Docker image
+        run: docker push backendchat.azurecr.io/chatapp:latest
+
+      - name: Deploy to Azure Web App using Publish Profile
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: chatapp-backend
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          images: backendchat.azurecr.io/chatapp:latest

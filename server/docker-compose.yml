@@ -1,0 +1,10 @@
+services:
+  dev:
+    build: .
+    container_name: ts-node-dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npx prisma generate && npm run start"
