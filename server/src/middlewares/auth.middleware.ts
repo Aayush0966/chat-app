@@ -12,11 +12,11 @@ export const validateUser = async (req: Request, res: Response, next: NextFuncti
         hasRefreshToken: !!refreshToken 
     });
 
-    if (!accessToken) {
-        console.log('❌ No access token found');
-        res.status(401).json({ message: "Not authenticated" });
-        return;
-    }
+    // if (!accessToken) {
+    //     console.log('❌ No access token found');
+    //     res.status(401).json({ message: "Not authenticated" });
+    //     return;
+    // }
 
     const decodedAccess = verifyJwt(accessToken, process.env.JWT_ACCESS_SECRET);
     console.log('🔍 Decoded access token:', decodedAccess);

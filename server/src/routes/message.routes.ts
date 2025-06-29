@@ -6,3 +6,6 @@ export const messageRouter = express.Router();
 
 messageRouter.post("/", validateUser, messageController.sendMessage)
 messageRouter.get("/:chatId", validateUser, messageController.getMessageByChat)
+messageRouter.delete("/user/:messageId", validateUser, messageController.removeMessageForYourself)
+messageRouter.delete("/both/:messageId", validateUser, messageController.removeMessageForBoth)
+messageRouter.patch("/:messageId", validateUser, messageController.editMessage)
