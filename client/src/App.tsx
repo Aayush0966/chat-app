@@ -4,6 +4,7 @@ import RootLayout from "./components/layouts/RootLayout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AuthLayout from "./components/layouts/AuthLayout";
+import Forgot from "./pages/Forgot";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route element={<AuthLayout />}>
             <Route path="login" element={<Login />} />
             <Route path="register" element={<Register />} />
+            <Route path="forgot-password" element={<Forgot />} />
           </Route>
         </Route>
       </Routes>
