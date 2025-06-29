@@ -12,11 +12,25 @@ export const messageServices = {
             })
         )
     },
-    async getMessageByChatId(chatId:string, limit: number = 20, cursor?: string ) {
+    async getMessageByChatId(chatId:string, limit: number = 20, userId: string, cursor?: string,) {
         return await prismaSafe(
             prisma.message.findMany({
                 where: {
-                    chatId
+                    chatId,
+                    NOT: {
+                        OR: [
+                            {
+                                deletedMessages: {
+                                    some: {
+                                        userId: userId
+                                    }
+                                }
+                            },
+                            {
+                                text: null
+                            }
+                        ]
+                    }
                 },
                 orderBy: { sentAt: 'desc'},
                 take: limit, ...(cursor && {
@@ -51,9 +65,9 @@ export const messageServices = {
             return { success: false, message: "Message not found", code: HTTP.NOT_FOUND };
         }
 
-        if (message.senderId !== userId) {
-            return { success: false, message: "Unauthorized", code: HTTP.UNAUTHORIZED };
-        }
+        // if (message.senderId !== userId) {
+        //     return { success: false, message: "Unauthorized", code: HTTP.UNAUTHORIZED };
+        // }
 
         const [deleteError, deletedMessage] = await prismaSafe(
             prisma.deletedMessage.create({
@@ -90,7 +104,7 @@ export const messageServices = {
             return { success: false, message: "Unauthorized", code: HTTP.UNAUTHORIZED };
         }
 
-        const [updateErr, _] = await prismaSafe(
+        const [updateErr, data] = await prismaSafe(
             prisma.message.update({
                 where: {id: messageId},
                 data: {text: null, attachment: null}
@@ -104,6 +118,7 @@ export const messageServices = {
         return {
             success: true,
             message: "Message has been deleted",
+            data,
             code: HTTP.OK,
         };
     },
