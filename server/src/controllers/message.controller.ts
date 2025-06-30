@@ -3,6 +3,7 @@ import { HTTP } from "../utils/httpStatus";
 import { userServices } from "../services/user.services";
 import { messageServices } from "../services/message.services";
 import { Message } from "../types/chat.types";
+import { io } from "../server";
 
 export const messageController = {
     sendMessage: async (req: Request, res: Response): Promise<void> => {
@@ -41,6 +42,7 @@ export const messageController = {
             }
             const [error, result] = await messageServices.sendMessage(message);
 
+            io.to(chatId).emit("new-message", text);
             if (error) {
                 res.error({ error, code: HTTP.INTERNAL })
                 return;
@@ -145,7 +147,7 @@ export const messageController = {
             return;
         }
         const messageId = req.params.messageId;
-        const {newMessage} = req.body;
+        const { newMessage } = req.body;
         if (!messageId || !newMessage) {
             res.error({ error: "MessageId and new message is required!", code: HTTP.BAD_REQUEST })
             return;
@@ -159,4 +161,35 @@ export const messageController = {
             res.success({ success: true, data: result.data, code: result.code, message: result.message })
         }
     },
+    searchMessage: async (req: Request, res: Response): Promise<void> => {
+        const user = req.user?.id;
+        const {chatId, message} = req.query;
+        console.log("ChatId: ", chatId )
+        console.log("message: ", message)
+        if (!user) {
+            res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED })
+            return;
+        }
+
+        if (!chatId || !message) {
+            res.error({ error: "ChatId and messageText is required", code: HTTP.BAD_REQUEST })
+            return;
+        }
+
+        const [error, data] = await messageServices.searchMessage(String(message), String(chatId))
+
+        if (error) {
+            res.error({ error, code: HTTP.INTERNAL })
+            return;
+        }
+        if (!data) {
+            res.error({ error: "message not found", code: HTTP.NOT_FOUND })
+            return;
+        }
+        res.success({
+            message: "Message found successfully",
+            code:HTTP.OK,
+            data
+        })
+    }
 };

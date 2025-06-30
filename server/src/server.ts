@@ -9,18 +9,26 @@ import responseHandler from "./middlewares/response.middleware";
 import {userRoutes} from "./routes/user.routes";
 import {chatRouter} from "./routes/chat.routes";
 import { messageRouter } from './routes/message.routes';
+import { setupSockets } from './sockets';
+import http from 'http';
+import { Server } from 'socket.io';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
-
 const corsOptions = {
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'],
   credentials: true,
   optionsSuccessStatus: 200,
 };
+
+const server = http.createServer(app);
+export const io = new Server(server, { cors: corsOptions });
+
+
+setupSockets(io)
 
 app.use(cors(corsOptions));
 app.use(morgan('dev'));
@@ -103,7 +111,7 @@ process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) =>
   process.exit(1);
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server is running on port ${PORT} in ${NODE_ENV} mode`);
   console.log(`📊 Health check available at http://0.0.0.0:${PORT}/health`);
 });

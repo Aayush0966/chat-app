@@ -156,5 +156,14 @@ export const messageServices = {
         };
     },
 
-
+    async searchMessage(messageText: string,chatId: string) {
+        return await prismaSafe(
+            prisma.message.findMany({
+                where: {
+                    text: messageText,
+                    chatId
+                }
+            })
+        )
+    }
 }
