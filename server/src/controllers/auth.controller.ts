@@ -1,18 +1,19 @@
 import {Request, Response} from "express";
-import {authService} from "../services/auth.service";
+import {authServices} from "../services/auth.services";
 import {comparePassword, hashPassword} from "../lib/password";
 import {userServices} from "../services/user.services";
-import SuccessResponse from "../dtos/SuccessResponse";
 import {generateTokenAndUpdate, signJwt, verifyJwt} from "../lib/jwt";
 import {sendTransactionalEmail} from "../lib/email";
 import {AccountType} from "@prisma/client";
+import {HTTP} from "../utils/httpStatus";
+
 
 export const authController = {
     register: async (req: Request, res: Response): Promise<void> => {
-        const {firstName, lastName, phoneNumber, email, password, accountType = AccountType.CREDENTIALS} = req.body;
+        const { firstName, lastName, phoneNumber, email, password, accountType = AccountType.CREDENTIALS } = req.body;
 
         if (!firstName || !lastName || !phoneNumber || !email || !password) {
-            res.status(400).json(new SuccessResponse({message: "Missing required fields", code: 400}));
+            res.error({error: "Missing required fields", code: HTTP.BAD_REQUEST});
             return;
         }
 
@@ -30,41 +31,43 @@ export const authController = {
         );
 
         if (error) {
-            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
-        }
-
-        if (existingUser) {
-            res.status(400).json(new SuccessResponse({message: "Phone number or email is already used", code: 400}));
+            res.error({error: `Something went wrong: ${error}`, code: HTTP.INTERNAL});
             return;
         }
 
-        const newUser = await authService.registerUser(userData, accountType);
+        if (existingUser) {
+            res.error({error: "Phone number or email is already used", code: HTTP.BAD_REQUEST});
+            return;
+        }
+
+        const newUser = await authServices.registerUser(userData, accountType);
 
         if (newUser.success) {
-            res.status(201).json(new SuccessResponse({message: "User registered successfully", code: 201}));
+            res.success({message: "User registered successfully", code: HTTP.CREATED});
         } else {
-            res.status(500).json(new SuccessResponse({
-                message: newUser.error || "Something went wrong",
-                code: 500
-            }));
+            res.error({
+                error: newUser.error || "Something went wrong",
+                code: HTTP.INTERNAL
+            });
         }
     },
     login: async (req: Request, res: Response): Promise<void> => {
-        const {email, phoneNumber, password} = req.body;
+        const { email, phoneNumber, password } = req.body;
 
         if ((!email && !phoneNumber) || !password) {
-            res.status(400).json(new SuccessResponse({message: "Missing required fields", code: 400}));
+            res.error({error: "Missing required fields", code: HTTP.BAD_REQUEST});
             return;
         }
 
         const [error, existingUser] = await userServices.getUserByEmailOrPhoneNumber(email, phoneNumber);
 
         if (error) {
-            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+            res.error({error: `Something went wrong: ${error}`, code: HTTP.INTERNAL});
+            return;
         }
 
         if (!existingUser) {
-            res.status(400).json(new SuccessResponse({message: "Email or Phone number is incorrect.", code: 400}));
+            res.error({error: "Email or Phone number is incorrect.", code: HTTP.BAD_REQUEST});
             return;
         }
 
@@ -73,90 +76,118 @@ export const authController = {
             : false;
 
         if (!passwordMatched) {
-            res.status(400).json(new SuccessResponse({message: "Password is incorrect", code: 400}));
+            res.error({error: "Password is incorrect", code: HTTP.BAD_REQUEST});
             return;
         }
 
         try {
-            const {accessToken, refreshToken} = await generateTokenAndUpdate(existingUser)
-            res.cookie("token", refreshToken, {
+            const { accessToken, refreshToken } = await generateTokenAndUpdate(existingUser)
+            res.cookie("_sid", accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+                maxAge: 15 * 60 * 1000,
+            });
+
+
+            res.cookie("_rid", refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "strict",
                 maxAge: 1000 * 60 * 60 * 72,
             })
-            res.status(200).json(new SuccessResponse({
+
+            const {password,verificationOTP, refreshToken: refreshUserToken, ...safeUser} = existingUser;
+            res.success({
                 message: "Login successfully",
-                data: {accessToken}
-            }));
+                data: {safeUser},
+                code: HTTP.OK
+            });
 
         } catch (updateError) {
             console.error("Failed to update refresh token:", updateError);
-            res.status(500).json(new SuccessResponse({
-                message: "Internal server error",
-                code: 500
-            }));
+            res.error({
+                error: "Internal server error",
+                code: HTTP.INTERNAL
+            });
         }
     },
     refreshAccessToken: async (req: Request, res: Response): Promise<void> => {
         const token = req.cookies.token;
 
         if (!token) {
-            res.status(401).json(new SuccessResponse({message: "Not authenticated", code: 401}));
+            res.error({error: "Not authenticated", code: HTTP.UNAUTHORIZED});
             return;
         }
 
         const decodedToken = verifyJwt(token, process.env.JWT_REFRESH_SECRET);
         if (!decodedToken) {
-            res.status(401).json(new SuccessResponse({message: "Invalid refresh token", code: 401}));
+            res.error({error: "Invalid refresh token", code: HTTP.UNAUTHORIZED});
             return;
         }
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(decodedToken.email);
 
         if (error) {
-            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
-        }
-
-        if (!user || user.refreshToken !== token) {
-            res.status(401).json(new SuccessResponse({message: "Invalid session", code: 401}));
+            res.error({error: `Something went wrong: ${error}`, code: HTTP.INTERNAL});
             return;
         }
 
-        const {accessToken, refreshToken} = await generateTokenAndUpdate(user);
+        if (!user || user.refreshToken !== token) {
+            res.error({error: "Invalid session", code: HTTP.UNAUTHORIZED});
+            return;
+        }
 
-        res.cookie("token", refreshToken, {
+        const { accessToken, refreshToken } = await generateTokenAndUpdate(user);
+
+        res.cookie("_sid", accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 15 * 60 * 1000,
+        });
+
+
+        res.cookie("_rid", refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
             maxAge: 1000 * 60 * 60 * 72,
         });
 
-        res.status(200).json(new SuccessResponse({
+        res.success({
             message: "Token refreshed successfully",
             data: {accessToken},
-        }));
+            code: HTTP.OK
+        });
     },
 
     forgetPassword: async (req: Request, res: Response): Promise<void> => {
-        const {email, phoneNumber} = req.body;
+        const { email, phoneNumber } = req.body;
 
         if (!email && !phoneNumber) {
-            res.status(400).json(new SuccessResponse({message: "Email or phone number is required.", code: 400}));
+            res.error({error: "Email or phone number is required.", code: HTTP.BAD_REQUEST});
             return;
         }
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(email, phoneNumber);
 
-        if (error || !user) {
-            res.status(400).json(new SuccessResponse({message: "Email or Phone number is incorrect.", code: 400}));
+
+        if (error) {
+            res.error({error, code: HTTP.INTERNAL});
             return;
         }
 
-        const otp = await authService.forgetPassword(user.id);
+        if (!user ) {
+            res.error({error: "Email or Phone number is incorrect.", code: HTTP.BAD_REQUEST});
+            return;
+        }
+
+        const otp = await authServices.forgetPassword(user.id);
 
         if (!otp) {
-            res.status(400).json(new SuccessResponse({message: "Something went wrong", code: 500}));
+            res.error({error: "Something went wrong", code: HTTP.INTERNAL});
+            return;
         }
         const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User';
 
@@ -168,43 +199,48 @@ export const authController = {
             htmlContent: `<h1>Hello ${fullName}!</h1><p>Here's your code ${otp}</p>`
         });
 
-        res.status(200).json(new SuccessResponse({
+        res.success({
             message: "Password reset OTP sent successfully",
-            code: 200
-        }));
+            code: HTTP.OK
+        });
     },
     validateOTP: async (req: Request, res: Response): Promise<void> => {
-        const {OTP, email} = req.body;
+        const { OTP, email } = req.body;
         if (!OTP || !email) {
-            res.status(401).json(new SuccessResponse({message: "OTP and email is required", code: 401}));
+            res.error({error: "OTP and email is required", code: HTTP.UNAUTHORIZED});
+            return;
         }
 
         const [error, user] = await userServices.getUserByEmailOrPhoneNumber(email);
 
         if (error) {
-            res.status(500).json(new SuccessResponse({message: `Something went wrong: ${error} `, code: 500}));
+            res.error({error: `Something went wrong: ${error}`, code: HTTP.INTERNAL});
+            return;
         }
 
         if (!user) {
-            res.status(401).json(new SuccessResponse({message: "User not found"}))
+            res.error({error: "User not found", code: HTTP.UNAUTHORIZED});
             return;
         }
-        const valid = await authService.validateOTP(OTP, user.id);
+        const valid = await authServices.validateOTP(OTP, user.id);
 
         const tempToken = signJwt(
-            {userId: user.id,
-            email: user.email,
-            sub: user.id},
+            {
+                userId: user.id,
+                email: user.email,
+                sub: user.id
+            },
             '15m',
             process.env.JWT_RESET_SECRET
         );
 
         if (!valid.success) {
-            res.status(401).json(new SuccessResponse({message: valid.message}))
+            res.error({error: valid.message, code: HTTP.UNAUTHORIZED});
+            return;
         }
 
         if (valid.success) {
-            res.status(200).json(new SuccessResponse({message: valid.message, data: tempToken}))
+            res.success({message: valid.message, data: tempToken, code: HTTP.OK});
         }
     },
 
@@ -216,19 +252,28 @@ export const authController = {
         const decodedToken = verifyJwt(token, process.env.JWT_RESET_SECRET);
 
         if (!password || !token) {
-            res.status(401).json(new SuccessResponse({message: "Password and email and token is required", code: 401}));
+            res.error({error: "Password and token is required", code: HTTP.UNAUTHORIZED});
+            return;
         }
 
         if (!decodedToken) {
-            res.status(401).json(new SuccessResponse({message: "Token has been expired or invalid", code: 401}));
+            res.error({error: "Token has been expired or invalid", code: HTTP.UNAUTHORIZED});
+            return;
         }
-        const valid = await authService.resetPassword(decodedToken?.email ? decodedToken?.email: '', password);
+        const valid = await authServices.resetPassword(decodedToken?.email ? decodedToken?.email: '', password);
 
         if (!valid.success) {
-            res.status(401).json(new SuccessResponse({message: valid.message}))
+            res.error({error: valid.message, code: HTTP.UNAUTHORIZED});
+            return;
         }
         if (valid.success) {
-            res.status(200).json(new SuccessResponse({message: valid.message}))
+            res.success({message: valid.message, code: HTTP.OK});
         }
+    },
+    logout: async (req: Request, res: Response): Promise<void> => {
+        res.cookie('_sid', '', { maxAge: 0 });
+        res.cookie('_rid', '', { maxAge: 0 });
+
+        res.success({success: true, message: "Logout successfully", code: HTTP.OK})
     }
 }
