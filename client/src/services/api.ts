@@ -3,15 +3,24 @@ import type {
   LoginFormInputs,
   RegisterFormInputs,
   ForgotFormInputs,
-  CreateChat,
+  ValidateOTPInputs,
+  SendMessageInput,
 } from "@/types/user";
 
-const BASE_URL =
-  "https://chatapp-backend-dsa2fkh8e4ahgdhz.southeastasia-01.azurewebsites.net";
+const BASE_URL = "http://localhost:8000";
+
+const API_ENDPOINTS = {
+  login: `${BASE_URL}/api/auth/login`,
+  register: `${BASE_URL}/api/auth/register`,
+  forgot: `${BASE_URL}/api/auth/forget-password`,
+  validate: `${BASE_URL}/api/auth/validate-otp`,
+  getChats: `${BASE_URL}/api/chats/user`,
+  sendMessage: `${BASE_URL}/api/message`,
+};
 
 export const loginUser = async (data: LoginFormInputs) => {
   const res = await axios.post(
-    `${BASE_URL}/api/auth/login`,
+    API_ENDPOINTS.login,
     {
       phoneNumber: data.phoneNumber,
       password: data.password,
@@ -22,7 +31,7 @@ export const loginUser = async (data: LoginFormInputs) => {
 };
 
 export const registerUser = async (data: RegisterFormInputs) => {
-  const res = await axios.post(`${BASE_URL}/api/auth/register`, {
+  const res = await axios.post(API_ENDPOINTS.register, {
     firstName: data.firstName,
     lastName: data.lastName,
     email: data.email,
@@ -33,45 +42,40 @@ export const registerUser = async (data: RegisterFormInputs) => {
 };
 
 export const forgotPassword = async (data: ForgotFormInputs) => {
-  const res = await axios.post(`${BASE_URL}/api/auth/forget-password`, {
+  const res = await axios.post(API_ENDPOINTS.forgot, {
     email: data.email,
   });
   return res.data;
 };
 
+export const validateOTP = async (data: ValidateOTPInputs) => {
+  const res = await axios.post(API_ENDPOINTS.validate, {
+    email: data.email,
+    OTP: data.OTP,
+  });
+  return res.data;
+};
+
 export const searchUsers = async (query: string) => {
-  const accessToken =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWM1dTA5bTIwMDAwN25maDJ5bDdmYnVqIiwiZW1haWwiOiJsb3drZXk2OUBnbWFpbC5jb20iLCJpYXQiOjE3NTEwMTkwNjUsImV4cCI6MTc1MTAyMjY2NX0.tWCAs1u3V7tfZzR3cmw7H4jFvZ75lptaXIQgIYYDhp4";
   const res = await axios.get(
     `${BASE_URL}/api/users/search?q=${encodeURIComponent(query)}`,
     {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+      withCredentials: true,
     }
   );
   return res.data;
 };
 
-export const createChat = async (data: CreateChat) => {
-  const accessToken = localStorage.getItem("accessToken");
-  const res = await axios.post(
-    `${BASE_URL}/api/chats`,
-    {
-      creatorId: data.creatorId,
-      participantIds: data.participantIds,
-      isGroup: data.isGroup,
-      name: data.name,
-    },
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+export const getChatsByUser = async () => {
+  const res = await axios.get(API_ENDPOINTS.getChats, {
+    withCredentials: true,
+  });
   return res.data;
 };
 
-export const getChatsByUser = async () => {
-  const accessToken = localStorage.getItem("accessToken");
-  const res = await axios.get(`${BASE_URL}/api/chats/user`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+export const sendMessage = async (data: SendMessageInput) => {
+  const res = await axios.post(`${BASE_URL}/api/message`, data, {
+    withCredentials: true
   });
   return res.data;
 };

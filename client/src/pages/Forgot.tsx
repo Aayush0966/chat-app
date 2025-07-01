@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { useState } from "react";
 import { useNavigate, NavLink } from "react-router-dom";
-import { forgotPassword } from "@/services/api";
+import { forgotPassword, validateOTP } from "@/services/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +35,7 @@ const Forgot = () => {
   });
 
   async function onSubmit(data: ForgotFormInputs) {
-    console.log(data)
+    console.log(data);
     try {
       await forgotPassword(data);
       setOtpSent(true);
@@ -45,13 +45,19 @@ const Forgot = () => {
     }
   }
 
-  function onOtpSubmit(e: React.FormEvent) {
+  async function onOtpSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (otp === "888888") {
-      toast.success("OTP verified! Redirecting to reset password...");
-      setTimeout(() => navigate("/login"), 2000);
-    } else {
-      toast.error("Invalid OTP");
+    try {
+      const email = form.getValues("email");
+      const res = await validateOTP({ email, OTP: otp });
+      if (res.data?.code === 200) {
+        toast.success("OTP verified! Redirecting to reset password...");
+        setTimeout(() => navigate("/auth/login"), 2000);
+      } else {
+        toast.error(res.data?.error || "Invalid OTP");
+      }
+    } catch (err) {
+      console.log(err);
     }
   }
 
@@ -104,7 +110,7 @@ const Forgot = () => {
       <CardFooter className="grid gap-6">
         <Separator />
         <div className="text-center text-sm flex justify-center gap-3">
-          <NavLink to="/login" className="font-semibold">
+          <NavLink to="/auth/login" className="font-semibold">
             Back to Login
           </NavLink>
         </div>

@@ -39,15 +39,9 @@ const Login = () => {
   async function onSubmit(data: LoginFormInputs) {
     console.log(data);
     try {
-      const res = await loginUser(data);
-      if (res?.data?.accessToken) {
-        localStorage.setItem(
-          "accessToken",
-          JSON.stringify(res.data.accessToken)
-        );
-        toast.success("Login Successfull!");
-        navigate("/home");
-      }
+      await loginUser(data);
+      toast.success("Login Successfull!");
+      navigate("/home");
     } catch (err) {
       console.log(err);
     }
@@ -69,10 +63,7 @@ const Login = () => {
             <Phone control={form.control} />
             <Password control={form.control} />
             <div className="flex justify-end mt-2">
-              <NavLink
-                to="/forgot-password"
-                className="text-sm"
-              >
+              <NavLink to="/auth/forgot-password" className="text-sm">
                 Forgot password?
               </NavLink>
             </div>
