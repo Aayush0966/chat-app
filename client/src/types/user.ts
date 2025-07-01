@@ -51,6 +51,11 @@ export interface Message {
   text: string;
   sentAt: string;
   type: string;
+  sender?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 export interface SendMessageInput {
