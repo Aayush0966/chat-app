@@ -123,7 +123,7 @@ export const chatController = {
             return;
         }
 
-        const [error, chatData] = await chatServices.getChatParticipantsByChatId(chatId, userId);
+        const [error, chatData] = await chatServices.getChatParticipantsByChatIdAndUserId(chatId, userId);
 
         if (error) {
             res.error({error: error, code: HTTP.INTERNAL})

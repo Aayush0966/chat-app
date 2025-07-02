@@ -12,6 +12,8 @@ import {
   deleteMessageForBoth 
 } from "@/services/api";
 import type { Chat, Message, User } from "@/types/user";
+import type { AxiosError } from "axios";
+import socket from "@/services/socket";
 
 export const useChat = () => {
   const navigate = useNavigate();
@@ -38,15 +40,14 @@ export const useChat = () => {
         } else {
           navigate("/auth/login");
           return;
-        }
-        
+        }        
         const chatsRes = await getChatsByUser();
         setChats(chatsRes.data || []);
         if (chatsRes.data && chatsRes.data.length > 0) {
           setSelectedChat(chatsRes.data[0]);
         }
-      } catch (err: any) {
-        if (err?.response?.status === 401 || err?.response?.status === 403) {
+      } catch (err: unknown) {
+        if ((err as AxiosError)?.response?.status === 401 || (err as AxiosError)?.response?.status === 403) {
           localStorage.removeItem('currentUser');
           navigate("/auth/login");
         } else {
@@ -58,6 +59,7 @@ export const useChat = () => {
     };
     initializeApp();
   }, [navigate]);
+
 
   useEffect(() => {
     if (selectedChat) {
@@ -92,6 +94,8 @@ export const useChat = () => {
       sender: currentUser || undefined
     };
     
+    socket.emit("newMessage", tempMessage)
+
     setMessages(prev => [...prev, tempMessage]);
     setMessage("");
     
@@ -172,10 +176,10 @@ export const useChat = () => {
         setSearchedUsers([]);
         setIsMobileSidebarOpen(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to create chat:", err);
       
-      if (err?.response?.status === 409 && err?.response?.data?.error?.includes("already exists")) {
+      if ((err as AxiosError)?.response?.status === 409) {
         const existingChat = chats.find((chat: Chat) => 
           !chat.isGroup && chat.name === userName
         );
@@ -269,6 +273,8 @@ export const useChat = () => {
     currentUser,
     isMobileSidebarOpen,
     setMessage,
+    setMessages,
+    setChats,
     setSearchQuery,
     setShowNewChat,
     setUserSearchQuery,

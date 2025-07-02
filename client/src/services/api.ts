@@ -7,7 +7,7 @@ import type {
   SendMessageInput,
 } from "@/types/user";
 
-const BASE_URL = "http://localhost:8000";
+export const BASE_URL = "http://localhost:8000";
 
 const API_ENDPOINTS = {
   login: `${BASE_URL}/api/auth/login`,

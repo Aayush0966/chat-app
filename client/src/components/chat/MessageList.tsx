@@ -6,7 +6,6 @@ import {
   MoreVertical,
   Lock,
   Trash2,
-  Users
 } from "lucide-react";
 
 interface MessageListProps {

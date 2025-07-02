@@ -20,6 +20,16 @@ export const chatServices = {
         );
     },
 
+    async getChatParticipantsByChatId(chatId: string) {
+        return await prismaSafe(
+            prisma.chatParticipant.findMany({
+                where: {
+                    chatId
+                }
+            })
+        )
+    },
+
     async checkExistingDirectChat(creatorId: string, participantId: string) {
         return await prismaSafe(
             prisma.chat.findFirst({
@@ -93,7 +103,7 @@ export const chatServices = {
             })
         );
     },
-    async getChatParticipantsByChatId(chatId: string, userId: string) {
+    async getChatParticipantsByChatIdAndUserId(chatId: string, userId: string) {
         return await prismaSafe(
             prisma.chatParticipant.findFirst({
                 where: {

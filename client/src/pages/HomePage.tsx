@@ -7,6 +7,7 @@ import {
   NewChatModal, 
   EmptyState 
 } from "@/components/chat";
+import { useSocket } from "@/hooks/useSocket";
 
 const HomePage = () => {
   const {
@@ -23,6 +24,8 @@ const HomePage = () => {
     currentUser,
     isMobileSidebarOpen,
     setMessage,
+    setMessages,
+    setChats,
     setSearchQuery,
     setShowNewChat,
     setUserSearchQuery,
@@ -36,6 +39,8 @@ const HomePage = () => {
     handleChatSelect,
   } = useChat();
 
+  useSocket({ setMessages, setChats });
+  
   if (showNewChat) {
     return (
       <NewChatModal
