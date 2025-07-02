@@ -6,7 +6,6 @@ import {
   MoreVertical,
   Lock,
   Trash2,
-  Users
 } from "lucide-react";
 
 interface MessageListProps {
@@ -14,6 +13,7 @@ interface MessageListProps {
   currentUser: User | null;
   selectedChat: Chat;
   messagesLoading: boolean;
+  typingText?: string;
   onDeleteMessage: (messageId: string, deleteForBoth: boolean) => void;
 }
 
@@ -22,6 +22,7 @@ const MessageList = ({
   currentUser, 
   selectedChat, 
   messagesLoading, 
+  typingText,
   onDeleteMessage 
 }: MessageListProps) => {
   const [showMessageOptions, setShowMessageOptions] = useState<string | null>(null);
@@ -33,7 +34,7 @@ const MessageList = ({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, typingText]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -145,6 +146,22 @@ const MessageList = ({
           <p className="text-sm text-muted-foreground">
             This is the beginning of your conversation with {selectedChat.name}
           </p>
+        </div>
+      )}
+      
+      {/* Typing indicator */}
+      {typingText && (
+        <div className="flex items-start gap-3 px-4 py-2">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-muted-foreground/20 flex items-center justify-center">
+              <div className="text-xs font-medium text-muted-foreground">
+                {selectedChat.name.charAt(0).toUpperCase()}
+              </div>
+            </div>
+          </div>
+          <div className="bg-muted/50 rounded-2xl px-4 py-2 max-w-xs">
+            <p className="text-sm text-muted-foreground italic">{typingText}</p>
+          </div>
         </div>
       )}
        

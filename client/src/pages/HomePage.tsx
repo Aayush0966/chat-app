@@ -22,12 +22,14 @@ const HomePage = () => {
     searchedUsers,
     currentUser,
     isMobileSidebarOpen,
+    typingText,
     setMessage,
     setSearchQuery,
     setShowNewChat,
     setUserSearchQuery,
     setIsMobileSidebarOpen,
     handleSend,
+    handleTyping,
     handleUserSearch,
     handleCreateChat,
     handleDeleteChat,
@@ -35,7 +37,7 @@ const HomePage = () => {
     handleLogout,
     handleChatSelect,
   } = useChat();
-
+  
   if (showNewChat) {
     return (
       <NewChatModal
@@ -88,10 +90,12 @@ const HomePage = () => {
               currentUser={currentUser}
               selectedChat={selectedChat}
               messagesLoading={messagesLoading}
+              typingText={typingText}
               onDeleteMessage={handleDeleteMessage}
             />
             
             <MessageInput
+              onType = {handleTyping}
               message={message}
               setMessage={setMessage}
               onSend={handleSend}

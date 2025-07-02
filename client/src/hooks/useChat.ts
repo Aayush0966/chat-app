@@ -11,7 +11,9 @@ import {
   deleteMessageForYourself, 
   deleteMessageForBoth 
 } from "@/services/api";
+import { useSocket } from "@/hooks/useSocket";
 import type { Chat, Message, User } from "@/types/user";
+import type { AxiosError } from "axios";
 
 export const useChat = () => {
   const navigate = useNavigate();
@@ -27,6 +29,12 @@ export const useChat = () => {
   const [searchedUsers, setSearchedUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [messageCache, setMessageCache] = useState<Record<string, Message[]>>({});
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Get socket and typing information
+  const { socket, typingText } = useSocket({ setMessages, setChats, setMessageCache, selectedChat });
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -38,15 +46,14 @@ export const useChat = () => {
         } else {
           navigate("/auth/login");
           return;
-        }
-        
+        }        
         const chatsRes = await getChatsByUser();
         setChats(chatsRes.data || []);
         if (chatsRes.data && chatsRes.data.length > 0) {
           setSelectedChat(chatsRes.data[0]);
         }
-      } catch (err: any) {
-        if (err?.response?.status === 401 || err?.response?.status === 403) {
+      } catch (err: unknown) {
+        if ((err as AxiosError)?.response?.status === 401 || (err as AxiosError)?.response?.status === 403) {
           localStorage.removeItem('currentUser');
           navigate("/auth/login");
         } else {
@@ -59,17 +66,39 @@ export const useChat = () => {
     initializeApp();
   }, [navigate]);
 
+
   useEffect(() => {
     if (selectedChat) {
-      fetchMessages(selectedChat.id);
+      // Check if messages are already cached for this chat
+      if (messageCache[selectedChat.id]) {
+        setMessages(messageCache[selectedChat.id]);
+      } else {
+        fetchMessages(selectedChat.id);
+      }
     }
-  }, [selectedChat]);
+  }, [selectedChat, messageCache]);
+
+  // Separate effect for handling typing cleanup when changing chats
+  useEffect(() => {
+    return () => {
+      // Cleanup on chat change
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+    };
+  }, [selectedChat?.id, typingTimeout]);
 
   const fetchMessages = async (chatId: string) => {
     setMessagesLoading(true);
     try {
       const res = await getMessagesByChat(chatId);
-      setMessages(res.data ? res.data.reverse() : []);
+      const fetchedMessages = res.data ? res.data.reverse() : [];
+      setMessages(fetchedMessages);
+      // Cache the messages for this chat
+      setMessageCache(prev => ({
+        ...prev,
+        [chatId]: fetchedMessages
+      }));
     } catch (err) {
       console.error("Failed to fetch messages:", err);
       setMessages([]);
@@ -78,8 +107,58 @@ export const useChat = () => {
     }
   };
 
+
+  const handleTyping = async () => {
+    if (!selectedChat?.id || !currentUser?.id) {
+      return;
+    }
+    
+    const typingDetails = {
+      typingUserId: currentUser.id,
+      typingUserName: (currentUser.firstName ?? '') + ' ' + (currentUser.lastName ?? ''),
+      chatId: selectedChat.id
+    }
+
+    // Clear existing timeout first
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // If not already typing, emit start typing to server
+    if (!isTyping) {
+      console.log('Starting to type, emitting typing event');
+      setIsTyping(true);
+      socket.emit("typing", typingDetails);
+    }
+
+    // Set new timeout to stop typing after 5 seconds of inactivity
+    const timeout = setTimeout(() => {
+      console.log('Stopping typing due to inactivity');
+      setIsTyping(false);
+      socket.emit("stopTyping", typingDetails);
+      setTypingTimeout(null);
+    }, 5000);
+
+    setTypingTimeout(timeout);
+  }
+
+
   const handleSend = async () => {
     if (!message.trim() || !selectedChat) return;
+    
+    // Stop typing when sending a message
+    if (isTyping && currentUser?.id) {
+      setIsTyping(false);
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        setTypingTimeout(null);
+      }
+      socket.emit("stopTyping", {
+        typingUserId: currentUser.id,
+        typingUserName: (currentUser.firstName ?? '') + ' ' + (currentUser.lastName ?? ''),
+        chatId: selectedChat.id
+      });
+    }
     
     const messageText = message;
     const tempMessage: Message = {
@@ -92,7 +171,15 @@ export const useChat = () => {
       sender: currentUser || undefined
     };
     
-    setMessages(prev => [...prev, tempMessage]);
+    socket.emit("newMessage", tempMessage)
+
+    const updateMessages = (prev: Message[]) => [...prev, tempMessage];
+    setMessages(updateMessages);
+    // Update cache as well
+    setMessageCache(prevCache => ({
+      ...prevCache,
+      [selectedChat.id]: updateMessages(prevCache[selectedChat.id] || [])
+    }));
     setMessage("");
     
     try {
@@ -103,9 +190,15 @@ export const useChat = () => {
       });
       
       if (res?.data) {
-        setMessages(prev => prev.map(msg => 
+        const updateWithServerMessage = (prev: Message[]) => prev.map(msg => 
           msg.id === tempMessage.id ? res.data : msg
-        ));
+        );
+        setMessages(updateWithServerMessage);
+        // Update cache with server response
+        setMessageCache(prevCache => ({
+          ...prevCache,
+          [selectedChat.id]: updateWithServerMessage(prevCache[selectedChat.id] || [])
+        }));
         
         setChats(prev => prev.map(chat => 
           chat.id === selectedChat.id 
@@ -115,7 +208,13 @@ export const useChat = () => {
       }
     } catch (err) {
       console.error("Failed to send message:", err);
-      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      const removeFailedMessage = (prev: Message[]) => prev.filter(msg => msg.id !== tempMessage.id);
+      setMessages(removeFailedMessage);
+      // Remove failed message from cache as well
+      setMessageCache(prevCache => ({
+        ...prevCache,
+        [selectedChat.id]: removeFailedMessage(prevCache[selectedChat.id] || [])
+      }));
     }
   };
 
@@ -127,12 +226,14 @@ export const useChat = () => {
     
     try {
       const res = await searchUsers(query);
-      setSearchedUsers(res.data || []);
+      // Filter out the current user from search results
+      const filteredUsers = (res.data || []).filter((user: User) => user.id !== currentUser?.id);
+      setSearchedUsers(filteredUsers);
     } catch (err) {
       console.error("Failed to search users:", err);
       setSearchedUsers([]);
     }
-  }, []);
+  }, [currentUser?.id]);
 
   const handleCreateChat = async (userId: string, userName: string) => {
     if (!currentUser?.id) {
@@ -172,10 +273,10 @@ export const useChat = () => {
         setSearchedUsers([]);
         setIsMobileSidebarOpen(false);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to create chat:", err);
       
-      if (err?.response?.status === 409 && err?.response?.data?.error?.includes("already exists")) {
+      if ((err as AxiosError)?.response?.status === 409) {
         const existingChat = chats.find((chat: Chat) => 
           !chat.isGroup && chat.name === userName
         );
@@ -216,6 +317,12 @@ export const useChat = () => {
     try {
       await deleteChatForUser(chatId);
       setChats(prev => prev.filter(chat => chat.id !== chatId));
+      // Clear cache for the deleted chat
+      setMessageCache(prev => {
+        const newCache = { ...prev };
+        delete newCache[chatId];
+        return newCache;
+      });
       if (selectedChat?.id === chatId) {
         setSelectedChat(null);
       }
@@ -231,21 +338,38 @@ export const useChat = () => {
       } else {
         await deleteMessageForYourself(messageId);
       }
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
+      const updateMessages = (prev: Message[]) => prev.filter(msg => msg.id !== messageId);
+      setMessages(updateMessages);
+      // Update cache as well
+      if (selectedChat) {
+        setMessageCache(prevCache => ({
+          ...prevCache,
+          [selectedChat.id]: updateMessages(prevCache[selectedChat.id] || [])
+        }));
+      }
     } catch (err) {
       console.error("Failed to delete message:", err);
     }
   };
 
   const handleLogout = async () => {
+    // Clean up typing state before logout
+    if (isTyping && typingTimeout) {
+      clearTimeout(typingTimeout);
+      setTypingTimeout(null);
+      setIsTyping(false);
+    }
+    
     try {
       await logout();
       setCurrentUser(null);
+      setMessageCache({}); // Clear message cache on logout
       navigate("/auth/login");
     } catch (err) {
       console.error("Logout failed:", err);
       localStorage.removeItem('currentUser');
       setCurrentUser(null);
+      setMessageCache({}); // Clear message cache on logout
       navigate("/auth/login");
     }
   };
@@ -268,6 +392,7 @@ export const useChat = () => {
     searchedUsers,
     currentUser,
     isMobileSidebarOpen,
+    typingText,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -279,6 +404,7 @@ export const useChat = () => {
     handleDeleteChat,
     handleDeleteMessage,
     handleLogout,
+    handleTyping,
     handleChatSelect,
   };
 }; 

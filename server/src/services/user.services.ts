@@ -26,7 +26,7 @@ export const userServices = {
         return user || null;
     },
 
-    async findUser(firstName: string) {
+    async findUser(firstName: string, lastName: string) {
         const [error, users] = await prismaSafe(
             prisma.user.findMany({
                 where: {
@@ -34,6 +34,10 @@ export const userServices = {
                         contains: firstName,
                         mode: "insensitive",
                     },
+                    lastName: {
+                        contains: lastName,
+                        mode: 'insensitive',
+                    }
                 },
                 select: {
                     id: true,

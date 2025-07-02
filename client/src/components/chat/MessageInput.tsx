@@ -13,9 +13,10 @@ interface MessageInputProps {
   message: string;
   setMessage: (message: string) => void;
   onSend: () => void;
+  onType: () => void;
 }
 
-const MessageInput = ({ message, setMessage, onSend }: MessageInputProps) => {
+const MessageInput = ({ message, setMessage, onSend, onType }: MessageInputProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -40,7 +41,10 @@ const MessageInput = ({ message, setMessage, onSend }: MessageInputProps) => {
             ref={inputRef}
             placeholder="Type your message..."
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              onType();
+            }}
             onKeyDown={handleKeyDown}
             className="bg-background/60 border-border/50 focus:border-primary/50 pr-20 py-3 text-foreground placeholder-muted-foreground rounded-xl"
           />
