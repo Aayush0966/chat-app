@@ -1,4 +1,4 @@
-import {prismaSafe} from "../lib/prismaSafe";
+import { prismaSafe } from "../lib/prismaSafe";
 import prisma from "../configs/prisma";
 import { Chat } from "../types/chat.types";
 
@@ -94,7 +94,7 @@ export const chatServices = {
                                 }
                             },
                             messages: {
-                                orderBy: {sentAt: 'desc'},
+                                orderBy: { sentAt: 'desc' },
                                 take: 1
                             }
                         }
@@ -128,28 +128,20 @@ export const chatServices = {
         );
 
     },
-    // Add these methods to your chatServices object
-
-    async checkExistingDirectChatIncludingDeleted(creatorId: string, participantId: string) {
+    async checkExistingDirectChatIncludingDeleted(participantIds: string[]) {
         return await prismaSafe(
             prisma.chat.findFirst({
                 where: {
                     isGroup: false,
                     AND: [
-                        {
-                            participants: {
-                                some: {
-                                    userId: creatorId
-                                }
-                            }
-                        },
-                        {
+
+                        ...participantIds.map(participantId => ({
                             participants: {
                                 some: {
                                     userId: participantId
                                 }
                             }
-                        }
+                        }))
                     ]
                 },
                 include: {

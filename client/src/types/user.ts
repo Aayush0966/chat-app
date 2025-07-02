@@ -63,3 +63,9 @@ export interface SendMessageInput {
   text: string;
   messageType: string;
 }
+
+export interface TypingData {
+  chatId: string;
+  typingUserName: string;
+  typingUserId: string;
+}

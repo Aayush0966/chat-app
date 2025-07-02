@@ -11,7 +11,8 @@ export const chatController = {
         }
 
         if (!isGroup && participantIds.length === 2) {
-            const [existingChatErr, existingChat] = await chatServices.checkExistingDirectChatIncludingDeleted(creatorId, participantIds[0]);
+            const [existingChatErr, existingChat] = await chatServices.checkExistingDirectChatIncludingDeleted(participantIds);
+
 
             if (existingChatErr) {
                 res.error({error: existingChatErr, code: HTTP.BAD_REQUEST});
@@ -51,7 +52,7 @@ export const chatController = {
             res.error({error: "Failed to create chat. Please try again later.", code: HTTP.INTERNAL});
             return;
         }
-        res.success({success: true, message: "Chat created successfully", details: data, code: HTTP.CREATED})
+        res.success({success: true, message: "Chat created successfully", details: data.id, code: HTTP.CREATED})
     },
     getChatById: async (req: Request, res: Response): Promise<void> => {
         const chatId = req.query.q;
@@ -89,6 +90,7 @@ export const chatController = {
             res.success({message: "No chats found", data: [], code: HTTP.NOT_FOUND});
             return;
         }
+
 
         const chats = chatParticipants.map((cp) => {
             const chat = cp.chat;

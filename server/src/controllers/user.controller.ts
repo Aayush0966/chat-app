@@ -4,12 +4,13 @@ import {HTTP} from "../utils/httpStatus";
 
 export const userController = {
     searchUser: async (req:Request, res: Response): Promise<void> => {
-        const firstName = req.query.q;
-        if (!firstName) {
+        const name = req.query.q;
+        if (!name) {
             res.error({error: "Query is required!", code: HTTP.BAD_REQUEST});
             return;
         }
-        const result = await userServices.findUser(String(firstName));
+        const [firstName, lastName] = String(name).split(' ');
+        const result = await userServices.findUser(firstName, lastName);
 
         if (!result.success || !result.data) {
             res.error({error: result.message, code: result.statusCode});
