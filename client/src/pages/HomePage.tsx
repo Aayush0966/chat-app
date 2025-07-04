@@ -23,6 +23,7 @@ const HomePage = () => {
     currentUser,
     isMobileSidebarOpen,
     typingText,
+    onlineUsers,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -73,6 +74,7 @@ const HomePage = () => {
         onDeleteChat={handleDeleteChat}
         onClose={() => setIsMobileSidebarOpen(false)}
         isOpen={isMobileSidebarOpen}
+        onlineUsers={onlineUsers}
       />
       
       <div className="flex-1 flex flex-col min-h-0 bg-background/40 backdrop-blur-sm">
@@ -83,6 +85,7 @@ const HomePage = () => {
             <ChatHeader
               selectedChat={selectedChat}
               onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
+              onlineUsers={onlineUsers}
             />
             
             <MessageList
@@ -95,7 +98,7 @@ const HomePage = () => {
             />
             
             <MessageInput
-              onType = {handleTyping}
+              onType={handleTyping}
               message={message}
               setMessage={setMessage}
               onSend={handleSend}

@@ -1,24 +1,66 @@
 import { useEffect, useState } from "react";
 import socket from "@/services/socket";
-import type { Message, Chat, TypingData } from "@/types/user";
+import type { Message, Chat, TypingData, User } from "@/types/user";
 
 interface UseSocketProps {
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
     setChats: React.Dispatch<React.SetStateAction<Chat[]>>;
     setMessageCache: React.Dispatch<React.SetStateAction<Record<string, Message[]>>>;
     selectedChat: Chat | null;
+    currentUser: User | null;
 }
 
-export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat }: UseSocketProps) => {
+export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat, currentUser }: UseSocketProps) => {
     const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+    const [onlineUsers, setOnlineUsers] = useState<Record<string, boolean>>({});
+
+    // Handle browser close/refresh
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            if (socket && currentUser?.id) {
+                // Try to notify server about disconnection
+                socket.emit("userLogout", currentUser.id);
+                socket.disconnect();
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [currentUser?.id]);
 
     useEffect(() => {
         if (!socket.connected) {
             socket.connect();
         }
 
-        const handleNewMessage = (data: { message: Message }) => {
+        const handleConnect = () => {
+            console.log("🔌 Socket connected");
+            // Clear online users first
+            setOnlineUsers({});
+            if (currentUser?.id) {
+                socket.emit("userConnected", currentUser.id);
+            }
+            socket.emit("ping", "Ping from client");
+        };
 
+        const handleDisconnect = () => {
+            console.log("🔌 Socket disconnected");
+            // Clear online users on disconnect
+            setOnlineUsers({});
+        };
+
+        const handleReconnect = () => {
+            console.log("🔌 Socket reconnecting...");
+            setOnlineUsers({});
+            if (currentUser?.id) {
+                socket.emit("userConnected", currentUser.id);
+            }
+        };
+
+        const handleNewMessage = (data: { message: Message }) => {
             if (selectedChat && data.message.chatId === selectedChat.id) {
                 setMessages((prev: Message[]) => {
                     if (prev.some((msg) => msg.id === data.message.id)) return prev;
@@ -47,7 +89,6 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
                         : chat
                 );
 
-                // Move the updated chat to the top of the list
                 const updatedChatIndex = updatedChats.findIndex(chat => chat.id === data.message.chatId);
                 if (updatedChatIndex > 0) {
                     const updatedChat = updatedChats[updatedChatIndex];
@@ -57,14 +98,16 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
 
                 return updatedChats;
             });
-        };        const handleStartTyping = (data: TypingData) => {
+        };
+
+        const handleStartTyping = (data: TypingData) => {
             if (selectedChat && data.chatId === selectedChat.id) {
                 setTypingUsers(prev => ({
                     ...prev,
                     [data.typingUserId]: data.typingUserName
                 }));
             }
-        }
+        };
 
         const handleStopTyping = (data: TypingData) => {
             if (selectedChat && data.chatId === selectedChat.id) {
@@ -74,41 +117,44 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
                     return updated;
                 });
             }
-        }
-
-        const handleConnect = () => {
-            console.log("🔌 Socket connected");
-            socket.emit("ping", "Ping from client");
         };
 
-        const handlePong = (data: string) => {
-            console.log("🏓 Pong from server:", data);
-        };
-
-        const handleConnectError = (error: Error) => {
-            console.error("❌ Socket connection error:", error.message);
+        const handleUserStatusChanged = (data: { userId: string; status: 'online' | 'offline', firstName: string }) => {
+            console.log(`👤 User ${data.firstName} is now ${data.status}`);
+            setOnlineUsers(prev => ({
+                ...prev,
+                [data.userId]: data.status === 'online'
+            }));
         };
 
         socket.on("connect", handleConnect);
-        socket.on("startTyping", handleStartTyping)
-        socket.on("stopTyping", handleStopTyping)
+        socket.on("disconnect", handleDisconnect);
+        socket.on("reconnect", handleReconnect);
+        socket.on("userStatusChanged", handleUserStatusChanged);
         socket.on("newMessage", handleNewMessage);
-        socket.on("pong", handlePong);
-        socket.on("connect_error", handleConnectError);
+        socket.on("startTyping", handleStartTyping);
+        socket.on("stopTyping", handleStopTyping);
 
-        if (socket.connected) {
-            socket.emit("ping", "Ping from client");
+        // If already connected when mounting, emit userConnected
+        if (socket.connected && currentUser?.id) {
+            socket.emit("userConnected", currentUser.id);
         }
 
+        // Clean up
         return () => {
             socket.off("connect", handleConnect);
+            socket.off("disconnect", handleDisconnect);
+            socket.off("reconnect", handleReconnect);
+            socket.off("userStatusChanged", handleUserStatusChanged);
+            socket.off("newMessage", handleNewMessage);
             socket.off("startTyping", handleStartTyping);
             socket.off("stopTyping", handleStopTyping);
-            socket.off("newMessage", handleNewMessage);
-            socket.off("pong", handlePong);
-            socket.off("connect_error", handleConnectError);
         };
-    }, [setMessages, setChats, setMessageCache, selectedChat]);
+    }, [setMessages, setChats, setMessageCache, selectedChat, currentUser]);
+
+    const checkUserStatus = (userId: string) => {
+        socket.emit("getUserStatus", userId);
+    };
 
     // Get typing indicator text
     const typingUsersArray = Object.values(typingUsers);
@@ -116,5 +162,5 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
         ? `${typingUsersArray.join(', ')} ${typingUsersArray.length === 1 ? 'is' : 'are'} typing...`
         : '';
 
-    return { socket, typingText };
+    return { socket, typingText, onlineUsers, checkUserStatus };
 };

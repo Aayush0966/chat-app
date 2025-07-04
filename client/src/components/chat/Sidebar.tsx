@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,9 @@ import {
   Circle,
   Users,
   MoreVertical,
-  Trash2
+  Trash2,
+  Settings,
+  Moon,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -21,6 +23,7 @@ interface SidebarProps {
   currentUser: User | null;
   loading: boolean;
   searchQuery: string;
+  onlineUsers?: Record<string, boolean>;
   setSearchQuery: (query: string) => void;
   onChatSelect: (chat: Chat) => void;
   onNewChat: () => void;
@@ -36,6 +39,7 @@ const Sidebar = ({
   currentUser,
   loading,
   searchQuery,
+  onlineUsers = {},
   setSearchQuery,
   onChatSelect,
   onNewChat,
@@ -45,10 +49,29 @@ const Sidebar = ({
   isOpen
 }: SidebarProps) => {
   const [showChatOptions, setShowChatOptions] = useState<string | null>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const filteredChats = chats.filter(chat =>
     chat.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
+        setShowChatOptions(null);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -64,29 +87,41 @@ const Sidebar = ({
     }
   };
 
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2).toUpperCase();
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
   return (
-    <div className={`w-80 flex flex-col z-50 bg-background/80 backdrop-blur-xl border-r border-border/50 md:relative absolute inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out shadow-lg md:shadow-none`}>
-      <div className="p-6 border-b border-border/50 bg-background/60 backdrop-blur-sm">
+    <div className={`w-80 flex flex-col z-50 bg-background/95 backdrop-blur-xl border-r border-border/50 md:relative absolute inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none`}>
+      {/* Header Section */}
+      <div className="p-6 border-b border-border/50 bg-gradient-to-b from-background/80 to-background/60 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg ring-1 ring-primary/20">
               <MessageSquare className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                 ChatFlow
               </h1>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Online'}
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
+                <span className="font-medium">
+                  {currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Online'}
+                </span>
               </div>
             </div>
           </div>
-          <div className="flex gap-1">
+          
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden h-8 w-8 hover:bg-primary/10 text-muted-foreground hover:text-foreground"
+              className="md:hidden h-9 w-9 hover:bg-primary/10 text-muted-foreground hover:text-foreground transition-all duration-200 rounded-xl"
               onClick={onClose}
             >
               <X className="h-4 w-4" />
@@ -95,98 +130,160 @@ const Sidebar = ({
               variant="ghost"
               size="icon"
               onClick={onNewChat}
-              className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors text-muted-foreground"
+              className="h-9 w-9 hover:bg-primary/10 hover:text-primary transition-all duration-200 text-muted-foreground rounded-xl hover:scale-105 active:scale-95"
             >
               <Plus className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onLogout}
-              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+            
+            {/* Profile Menu */}
+            <div className="relative" ref={profileRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="h-9 w-9 hover:bg-muted/50 transition-all duration-200 text-muted-foreground rounded-xl"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+              
+              {showProfileMenu && (
+                <div className="absolute right-0 top-12 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl shadow-xl z-20 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
+                  <div className="p-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
+                    >
+                      <Settings className="h-4 w-4 mr-3" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
+                    >
+                      <Moon className="h-4 w-4 mr-3" />
+                      Dark Mode
+                    </Button>
+                    <div className="my-1 h-px bg-border/50" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onLogout}
+                      className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                    >
+                      <LogOut className="h-4 w-4 mr-3" />
+                      Sign Out
+                    </Button>
                   </div>
-          
-          <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Enhanced Search */}
+        <div className={`relative transition-all duration-200 ${isSearchFocused ? 'scale-[1.02]' : ''}`}>
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 transition-colors" />
           <Input
             placeholder="Search conversations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-background/60 border-border/50 focus:border-primary/50 text-foreground placeholder-muted-foreground"
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            className="pl-10 pr-10 bg-background/70 border-border/50 focus:border-primary/50 text-foreground placeholder-muted-foreground transition-all duration-200 rounded-xl h-11"
           />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearSearch}
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 hover:bg-muted/50 rounded-lg"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
-              </div>
-        
-        <div className="flex-1 overflow-y-auto bg-background/30">
+      </div>
+      
+      {/* Chat List */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted/30 scrollbar-track-transparent">
         {loading ? (
           <div className="p-4 space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 bg-background/60 rounded-lg backdrop-blur-sm">
-                <Skeleton className="w-12 h-12 rounded-full bg-muted/50" />
-                <div className="flex-1">
-                  <Skeleton className="h-4 w-24 mb-2 bg-muted/50" />
-                  <Skeleton className="h-3 w-32 bg-muted/50" />
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-4 bg-background/40 rounded-xl backdrop-blur-sm animate-pulse">
+                <Skeleton className="w-12 h-12 rounded-full bg-muted/30" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-24 bg-muted/30" />
+                  <Skeleton className="h-3 w-32 bg-muted/30" />
                 </div>
-                <Skeleton className="h-3 w-8 bg-muted/50" />
+                <Skeleton className="h-3 w-8 bg-muted/30" />
               </div>
             ))}
           </div>
         ) : filteredChats.length > 0 ? (
-          <div className="p-4">
-            {filteredChats.map((chat) => (
+          <div className="p-3 space-y-1">
+            {filteredChats.map((chat, index) => (
               <div
                 key={chat.id}
-                className={`group flex items-center gap-3 p-4 hover:bg-background/80 cursor-pointer transition-all duration-200 rounded-xl mb-2 border backdrop-blur-sm relative ${
+                className={`group flex items-center p-3 hover:bg-background/80 cursor-pointer transition-all duration-200 rounded-xl border backdrop-blur-sm relative animate-in slide-in-from-left-4 ${
                   selectedChat?.id === chat.id 
-                    ? "bg-primary/10 border-primary/30 shadow-sm" 
-                    : "bg-background/60 border-border/30 hover:border-border/50"
+                    ? "bg-primary/15 border-primary/40 shadow-sm ring-1 ring-primary/20" 
+                    : "bg-background/40 border-border/20 hover:border-border/40 hover:shadow-sm"
                 }`}
+                style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div
-                  className="flex items-center gap-3 flex-1"
+                  className="flex items-center gap-3 flex-1 min-w-0"
                   onClick={() => onChatSelect(chat)}
                 >
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-muted to-muted/80 flex items-center justify-center text-foreground font-medium shadow-sm">
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center text-foreground font-semibold shadow-sm ring-2 ring-background transition-all duration-200 ${
+                      chat.isGroup 
+                        ? "from-blue-500/20 to-blue-600/20 text-blue-600" 
+                        : "from-muted to-muted/60"
+                    }`}>
                       {chat.isGroup ? (
-                        <Users className="h-6 w-6" />
+                        <Users className="h-5 w-5" />
                       ) : (
-                        chat.name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2)
+                        <span className="text-sm">{getInitials(chat.name)}</span>
                       )}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+                    {!chat.isGroup && onlineUsers[chat.userId!] && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
+                    )}
                   </div>
-                  
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className={`font-semibold truncate transition-colors ${
-                        selectedChat?.id === chat.id 
-                          ? "text-primary" 
-                          : "text-foreground group-hover:text-foreground/80"
-                      }`}>
-                        {chat.name}
-                      </h3>
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-foreground truncate">{chat.name}</h3>
                       {chat.lastMessageTime && (
-                        <span className="text-xs text-muted-foreground font-medium">
+                        <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
                           {formatTime(chat.lastMessageTime)}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {chat.lastMessage || "No messages yet"}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      {!chat.isGroup && onlineUsers[chat.userId!] && (
+                        <Circle className="h-2 w-2 fill-green-500 text-green-500" />
+                      )}
+                      <p className="text-sm text-muted-foreground truncate">
+                        {chat.lastMessage || (chat.isGroup ? "No messages yet" : "Start a conversation")}
+                      </p>
+                    </div>
                   </div>
-                                  </div>
-                  
-                  <div className="relative">
+                </div>
+                
+                {/* Online Status */}
+                {onlineUsers[chat.id] && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background shadow-sm" />
+                )}
+                
+                {/* Chat Options */}
+                <div className="relative flex-shrink-0" ref={optionsRef}>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground hover:bg-background/80"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-background/80 rounded-lg"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowChatOptions(showChatOptions === chat.id ? null : chat.id);
@@ -196,19 +293,21 @@ const Sidebar = ({
                   </Button>
                   
                   {showChatOptions === chat.id && (
-                    <div className="absolute right-0 top-10 bg-background/95 backdrop-blur-md border border-border/50 rounded-lg shadow-lg z-10 min-w-[120px]">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          onDeleteChat(chat.id);
-                          setShowChatOptions(null);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Chat
-                      </Button>
+                    <div className="absolute right-0 top-10 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl shadow-xl z-10 min-w-[140px] animate-in slide-in-from-top-2 duration-200">
+                      <div className="p-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                          onClick={() => {
+                            onDeleteChat(chat.id);
+                            setShowChatOptions(null);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-3" />
+                          Delete Chat
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -216,24 +315,24 @@ const Sidebar = ({
             ))}
           </div>
         ) : (
-          <div className="p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+          <div className="p-6 text-center animate-in fade-in-50 duration-500">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center mx-auto mb-6 ring-1 ring-border/20">
               <MessageSquare className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-foreground/80 font-medium mb-1">
+            <h3 className="text-foreground font-semibold mb-2 text-lg">
               {searchQuery ? "No chats found" : "No conversations yet"}
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              {searchQuery ? "Try searching with different keywords" : "Start your first conversation"}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              {searchQuery ? "Try searching with different keywords" : "Start your first conversation and connect with others"}
             </p>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={onNewChat}
-              className="text-primary border-primary/30 hover:bg-primary/10"
+              className="text-primary border-primary/40 hover:bg-primary/10 transition-all duration-200 rounded-xl hover:scale-105 active:scale-95"
             >
               <Plus className="h-4 w-4 mr-2" />
-              New Chat
+              {searchQuery ? "Start New Chat" : "New Conversation"}
             </Button>
           </div>
         )}
@@ -242,4 +341,4 @@ const Sidebar = ({
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

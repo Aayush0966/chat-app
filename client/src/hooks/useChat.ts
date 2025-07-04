@@ -34,7 +34,13 @@ export const useChat = () => {
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Get socket and typing information
-  const { socket, typingText } = useSocket({ setMessages, setChats, setMessageCache, selectedChat });
+  const { socket, typingText, onlineUsers } = useSocket({ 
+    setMessages, 
+    setChats, 
+    setMessageCache, 
+    selectedChat,
+    currentUser 
+  });
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -361,16 +367,30 @@ export const useChat = () => {
     }
     
     try {
+      // Emit logout event to socket server before disconnecting
+      if (socket && currentUser?.id) {
+        socket.emit("userLogout", currentUser.id);
+      }
+
+      // Disconnect socket
+      if (socket) {
+        socket.disconnect();
+      }
+
+      // Call logout API
       await logout();
-      setCurrentUser(null);
-      setMessageCache({}); // Clear message cache on logout
-      navigate("/auth/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
+      
+      // Clear user data
       localStorage.removeItem('currentUser');
       setCurrentUser(null);
-      setMessageCache({}); // Clear message cache on logout
+      setChats([]);
+      setMessages([]);
+      setSelectedChat(null);
+      setMessageCache({});
+      
       navigate("/auth/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
   };
 
@@ -393,6 +413,7 @@ export const useChat = () => {
     currentUser,
     isMobileSidebarOpen,
     typingText,
+    onlineUsers,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -407,4 +428,4 @@ export const useChat = () => {
     handleTyping,
     handleChatSelect,
   };
-}; 
+};

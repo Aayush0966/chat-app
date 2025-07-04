@@ -36,10 +36,18 @@ export interface User {
   lastName: string;
 }
 
+export interface ChatParticipant {
+  userId: string;
+  chatId: string;
+  deleted?: boolean;
+}
+
 export interface Chat {
   id: string;
   name: string;
   isGroup: boolean;
+  userId?: string; // ID of the other user in direct chats
+  participants?: ChatParticipant[];
   lastMessage: string | null;
   lastMessageTime: string | null;
 }
