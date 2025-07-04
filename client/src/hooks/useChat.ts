@@ -9,7 +9,8 @@ import {
   logout, 
   deleteChatForUser, 
   deleteMessageForYourself, 
-  deleteMessageForBoth 
+  deleteMessageForBoth,
+  sendImageMessage
 } from "@/services/api";
 import { useSocket } from "@/hooks/useSocket";
 import type { Chat, Message, User } from "@/types/user";
@@ -208,7 +209,12 @@ export const useChat = () => {
         
         setChats(prev => prev.map(chat => 
           chat.id === selectedChat.id 
-            ? { ...chat, lastMessage: messageText, lastMessageTime: new Date().toISOString() }
+            ? { 
+                ...chat, 
+                lastMessage: messageText, 
+                lastMessageTime: new Date().toISOString(),
+                lastMessageSenderId: currentUser?.id
+              }
             : chat
         ));
       }
@@ -338,12 +344,21 @@ export const useChat = () => {
   };
 
   const handleDeleteMessage = async (messageId: string, deleteForBoth: boolean = false) => {
+    if (!selectedChat || !currentUser?.id) return;
+
     try {
       if (deleteForBoth) {
         await deleteMessageForBoth(messageId);
+        // Emit socket event for real-time deletion
+        socket.emit("messageDelete", {
+          messageId,
+          chatId: selectedChat.id,
+          deletedBy: currentUser.id
+        });
       } else {
         await deleteMessageForYourself(messageId);
       }
+
       const updateMessages = (prev: Message[]) => prev.filter(msg => msg.id !== messageId);
       setMessages(updateMessages);
       // Update cache as well
@@ -399,6 +414,90 @@ export const useChat = () => {
     setIsMobileSidebarOpen(false);
   };
 
+  const handleSendImage = async (file: File) => {
+    if (!selectedChat || !currentUser) return;
+    
+    // Create a temporary message with loading state for immediate UI feedback
+    const tempMessage: Message = {
+      id: Date.now().toString(),
+      chatId: selectedChat.id,
+      senderId: currentUser.id,
+      text: "",
+      sentAt: new Date().toISOString(),
+      type: "ATTACHMENT",
+      attachment: URL.createObjectURL(file), // Temporary blob URL for preview
+      isUploading: true, // Flag to show loading state
+      sender: currentUser
+    };
+    
+    try {
+      // Emit to socket for real-time updates (with loading state)
+      socket.emit("newMessage", tempMessage);
+
+      // Update messages and cache immediately
+      const updateMessages = (prev: Message[]) => [...prev, tempMessage];
+      setMessages(updateMessages);
+      setMessageCache(prevCache => ({
+        ...prevCache,
+        [selectedChat.id]: updateMessages(prevCache[selectedChat.id] || [])
+      }));
+      
+      // Send image to server
+      const res = await sendImageMessage(selectedChat.id, file);
+      
+      if (res?.data) {
+        // Create the final message with server data
+        const serverMessage: Message = {
+          ...res.data,
+          isUploading: false
+        };
+        
+        // Replace temporary message with server response
+        const updateWithServerMessage = (prev: Message[]) => prev.map(msg => 
+          msg.id === tempMessage.id ? serverMessage : msg
+        );
+        setMessages(updateWithServerMessage);
+        setMessageCache(prevCache => ({
+          ...prevCache,
+          [selectedChat.id]: updateWithServerMessage(prevCache[selectedChat.id] || [])
+        }));
+        
+        // Emit the final message to other users via socket
+        socket.emit("newMessage", serverMessage);
+        
+        // Update chat list with last message
+        setChats(prev => prev.map(chat => 
+          chat.id === selectedChat.id 
+            ? { 
+                ...chat, 
+                lastMessage: "📷 Image", 
+                lastMessageTime: new Date().toISOString(),
+                lastMessageSenderId: currentUser.id
+              }
+            : chat
+        ));
+        
+        // Clean up temporary blob URL
+        URL.revokeObjectURL(tempMessage.attachment!);
+      }
+    } catch (err) {
+      console.error("Failed to send image:", err);
+      
+      // Remove failed message
+      const removeFailedMessage = (prev: Message[]) => prev.filter(msg => msg.id !== tempMessage.id);
+      setMessages(removeFailedMessage);
+      setMessageCache(prevCache => ({
+        ...prevCache,
+        [selectedChat.id]: removeFailedMessage(prevCache[selectedChat.id] || [])
+      }));
+      
+      // Clean up temporary blob URL
+      URL.revokeObjectURL(tempMessage.attachment!);
+      
+      throw err; // Re-throw for the ImageUpload component to handle
+    }
+  };
+
   return {
     chats,
     selectedChat,
@@ -427,5 +526,6 @@ export const useChat = () => {
     handleLogout,
     handleTyping,
     handleChatSelect,
+    handleSendImage,
   };
 };

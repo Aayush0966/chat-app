@@ -108,6 +108,7 @@ export const chatController = {
                 userId: chat.isGroup ? undefined : otherUser?.id,
                 lastMessage: lastMessage?.text || lastMessage?.attachment || null,
                 lastMessageTime: lastMessage?.sentAt,
+                lastMessageSenderId: lastMessage?.senderId || null,
             };
         });
 

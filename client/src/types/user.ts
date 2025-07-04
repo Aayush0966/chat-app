@@ -48,6 +48,7 @@ export interface Chat {
   isGroup: boolean;
   userId?: string; // ID of the other user in direct chats
   participants?: ChatParticipant[];
+  lastMessageSenderId?: string;
   lastMessage: string | null;
   lastMessageTime: string | null;
 }
@@ -59,6 +60,8 @@ export interface Message {
   text: string;
   sentAt: string;
   type: string;
+  attachment?: string; // Server uses 'attachment' field for image URLs
+  isUploading?: boolean; // Flag to show loading state for image uploads
   sender?: {
     id: string;
     firstName: string;

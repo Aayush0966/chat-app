@@ -63,11 +63,11 @@ export default function chatHandler(io: Server, socket: Socket) {
         if (!user) return;
 
         socketToUser.set(socket.id, userId);
-        onlineUsers.set(userId, { 
-            socketId: socket.id, 
-            firstName: user.firstName || 'Unknown' 
+        onlineUsers.set(userId, {
+            socketId: socket.id,
+            firstName: user.firstName || 'Unknown'
         });
-        
+
         socket.join(userId);
 
         const [err, userChats] = await chatServices.getChatsByUser(userId);
@@ -155,6 +155,27 @@ export default function chatHandler(io: Server, socket: Socket) {
 
         typingTimeouts.set(timeoutKey, timeout);
     })
+
+    socket.on("messageDelete", async (data: { messageId: string, chatId: string, deletedBy: string }) => {
+        const [err, chatParticipants] = await chatServices.getChatParticipantsByChatId(data.chatId)
+        if (err || !chatParticipants) {
+            socket.emit("message_error", {
+                message: "Failed to get chat participants",
+                details: err,
+            });
+            return;
+        }
+
+        const otherParticipants = chatParticipants.filter(participant => participant.userId !== data.deletedBy);
+
+        for (const participant of otherParticipants) {
+            io.to(participant.userId).emit("messageDeleted", {
+                messageId: data.messageId,
+                chatId: data.chatId,
+                deletedBy: data.deletedBy
+            });
+        }
+    });
 
     socket.on("stopTyping", async (typingDetails) => {
         const [err, chatParticipants] = await chatServices.getChatParticipantsByChatId(typingDetails.chatId)

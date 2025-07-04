@@ -37,6 +37,7 @@ const HomePage = () => {
     handleDeleteMessage,
     handleLogout,
     handleChatSelect,
+    handleSendImage,
   } = useChat();
   
   if (showNewChat) {
@@ -102,6 +103,7 @@ const HomePage = () => {
               message={message}
               setMessage={setMessage}
               onSend={handleSend}
+              onSendImage={handleSendImage}
             />
           </>
         )}

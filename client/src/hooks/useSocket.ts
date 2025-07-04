@@ -63,19 +63,49 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
         const handleNewMessage = (data: { message: Message }) => {
             if (selectedChat && data.message.chatId === selectedChat.id) {
                 setMessages((prev: Message[]) => {
-                    if (prev.some((msg) => msg.id === data.message.id)) return prev;
-                    return [...prev, data.message];
+                    // Check if this is an update to an existing message (for image uploads)
+                    const existingMsgIndex = prev.findIndex(msg => 
+                        msg.id === data.message.id || 
+                        (msg.isUploading && msg.senderId === data.message.senderId && msg.type === data.message.type)
+                    );
+                    
+                    if (existingMsgIndex !== -1) {
+                        // Update existing message
+                        const updatedMessages = [...prev];
+                        updatedMessages[existingMsgIndex] = data.message;
+                        return updatedMessages;
+                    } else {
+                        // Add new message if it doesn't exist
+                        if (prev.some((msg) => msg.id === data.message.id)) return prev;
+                        return [...prev, data.message];
+                    }
                 });
             }
 
             setMessageCache((prevCache) => {
-                if (prevCache[data.message.chatId]) {
+                const chatMessages = prevCache[data.message.chatId] || [];
+                
+                // Check if this is an update to an existing message
+                const existingMsgIndex = chatMessages.findIndex(msg => 
+                    msg.id === data.message.id || 
+                    (msg.isUploading && msg.senderId === data.message.senderId && msg.type === data.message.type)
+                );
+                
+                if (existingMsgIndex !== -1) {
+                    // Update existing message in cache
+                    const updatedMessages = [...chatMessages];
+                    updatedMessages[existingMsgIndex] = data.message;
                     return {
                         ...prevCache,
-                        [data.message.chatId]: [...prevCache[data.message.chatId], data.message]
+                        [data.message.chatId]: updatedMessages
+                    };
+                } else {
+                    // Add new message to cache
+                    return {
+                        ...prevCache,
+                        [data.message.chatId]: [...chatMessages, data.message]
                     };
                 }
-                return prevCache;
             });
 
             setChats((prev: Chat[]) => {
@@ -83,8 +113,11 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
                     chat.id === data.message.chatId
                         ? {
                             ...chat,
-                            lastMessage: data.message.text,
-                            lastMessageTime: data.message.sentAt
+                            lastMessage: data.message.type === "ATTACHMENT" 
+                              ? "📷 Image"
+                              : data.message.text,
+                            lastMessageTime: data.message.sentAt,
+                            lastMessageSenderId: data.message.senderId
                         }
                         : chat
                 );
@@ -127,6 +160,25 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
             }));
         };
 
+        const handleMessageDeleted = (data: { messageId: string, chatId: string, deletedBy: string }) => {
+            // Update messages if we're in the chat where the message was deleted
+            if (selectedChat && data.chatId === selectedChat.id) {
+                setMessages((prev: Message[]) => prev.filter(msg => msg.id !== data.messageId));
+            }
+
+            // Update message cache
+            setMessageCache((prevCache) => {
+                const chatMessages = prevCache[data.chatId];
+                if (chatMessages) {
+                    return {
+                        ...prevCache,
+                        [data.chatId]: chatMessages.filter(msg => msg.id !== data.messageId)
+                    };
+                }
+                return prevCache;
+            });
+        };
+
         socket.on("connect", handleConnect);
         socket.on("disconnect", handleDisconnect);
         socket.on("reconnect", handleReconnect);
@@ -134,6 +186,7 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
         socket.on("newMessage", handleNewMessage);
         socket.on("startTyping", handleStartTyping);
         socket.on("stopTyping", handleStopTyping);
+        socket.on("messageDeleted", handleMessageDeleted);
 
         // If already connected when mounting, emit userConnected
         if (socket.connected && currentUser?.id) {
@@ -149,6 +202,7 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
             socket.off("newMessage", handleNewMessage);
             socket.off("startTyping", handleStartTyping);
             socket.off("stopTyping", handleStopTyping);
+            socket.off("messageDeleted", handleMessageDeleted);
         };
     }, [setMessages, setChats, setMessageCache, selectedChat, currentUser]);
 

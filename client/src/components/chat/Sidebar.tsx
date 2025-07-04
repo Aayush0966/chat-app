@@ -267,7 +267,9 @@ const Sidebar = ({
                         <Circle className="h-2 w-2 fill-green-500 text-green-500" />
                       )}
                       <p className="text-sm text-muted-foreground truncate">
-                        {chat.lastMessage || (chat.isGroup ? "No messages yet" : "Start a conversation")}
+                        {chat.lastMessage 
+                          ? (currentUser?.id === chat.lastMessageSenderId ? "You: " : "") + chat.lastMessage
+                          : (chat.isGroup ? "No messages yet" : "Start a conversation")}
                       </p>
                     </div>
                   </div>

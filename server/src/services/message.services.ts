@@ -6,11 +6,52 @@ import { Message } from "../types/chat.types";
 
 export const messageServices = {
     async sendMessage(message: Message) {
-        return await prismaSafe(
-            prisma.message.create({
-                data: message
-            })
-        )
+        try {
+            if (!message.text && !message.attachment) {
+                throw new Error("Message must contain either text or attachment");
+            }
+
+            if (!message.chatId || !message.senderId || !message.type) {
+                throw new Error("Missing required fields: chatId, senderId, or type");
+            }
+
+            const chat = await prisma.chat.findUnique({
+                where: { id: message.chatId },
+                include: { participants: true }
+            });
+
+            if (!chat) {
+                throw new Error("Chat not found");
+            }
+
+            if (!chat.participants.some(p => p.userId === message.senderId)) {
+                throw new Error("User is not a participant in this chat");
+            }
+
+            return await prismaSafe(
+                prisma.message.create({
+                    data: {
+                        chatId: message.chatId,
+                        senderId: message.senderId,
+                        type: message.type,
+                        text: message.text || null,
+                        attachment: message.attachment || null
+                    },
+                    include: {
+                        sender: {
+                            select: {
+                                id: true,
+                                firstName: true,
+                                lastName: true
+                            }
+                        }
+                    }
+                })
+            );
+        } catch (error) {
+            console.error('Error creating message:', error);
+            return [error instanceof Error ? error.message : 'Failed to create message', null];
+        }
     },
     async getMessageByChatId(chatId:string, limit: number = 20, userId: string, cursor?: string,) {
         return await prismaSafe(
@@ -18,18 +59,11 @@ export const messageServices = {
                 where: {
                     chatId,
                     NOT: {
-                        OR: [
-                            {
-                                deletedMessages: {
-                                    some: {
-                                        userId: userId
-                                    }
-                                }
-                            },
-                            {
-                                text: null
+                        deletedMessages: {
+                            some: {
+                                userId: userId
                             }
-                        ]
+                        }
                     }
                 },
                 orderBy: { sentAt: 'desc'},
