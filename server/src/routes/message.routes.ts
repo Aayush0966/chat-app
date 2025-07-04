@@ -1,10 +1,11 @@
 import express from "express"
 import { validateUser } from "../middlewares/auth.middleware";
 import { messageController } from "../controllers/message.controller";
+import { upload } from "../lib/multer";
 
 export const messageRouter = express.Router();
 
-messageRouter.post("/", validateUser, messageController.sendMessage)
+messageRouter.post("/", validateUser, upload.single('attachment'), messageController.sendMessage)
 messageRouter.get("/search", validateUser, messageController.searchMessage)
 messageRouter.get("/:chatId", validateUser, messageController.getMessageByChat)
 messageRouter.delete("/user/:messageId", validateUser, messageController.removeMessageForYourself)

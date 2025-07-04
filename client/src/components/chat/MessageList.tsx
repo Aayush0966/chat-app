@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ImageLightbox } from "@/components/chat";
 import type { Message, User, Chat } from "@/types/user";
 import { 
   MoreVertical,
@@ -26,6 +27,7 @@ const MessageList = ({
   onDeleteMessage 
 }: MessageListProps) => {
   const [showMessageOptions, setShowMessageOptions] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<{src: string, alt: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -84,23 +86,47 @@ const MessageList = ({
                     ? "bg-primary text-primary-foreground ml-auto" 
                     : "bg-background/80 border border-border/50 text-foreground"
                 }`}>
-                  <p className="text-sm leading-relaxed">{msg.text}</p>
+                  {msg.type === "ATTACHMENT" && msg.attachment ? (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <img
+                          src={msg.attachment}
+                          alt="Shared image"
+                          className={`rounded-lg max-w-full h-auto max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity ${
+                            msg.isUploading ? 'opacity-70' : ''
+                          }`}
+                          onClick={() => !msg.isUploading && setLightboxImage({src: msg.attachment!, alt: "Shared image"})}
+                          loading="lazy"
+                        />
+                        {msg.isUploading && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                            <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg border">
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                              <span className="text-sm font-medium text-foreground">Processing image...</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                  )}
                   <div className={`text-xs mt-2 font-medium ${
                     isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                   }`}>
-                                              {formatTime(msg.sentAt)}
-                          </div>
-                          
-                          {isOwn && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute -right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-background/20 hover:bg-background/30 text-primary-foreground"
-                      onClick={() => setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)}
-                    >
-                      <MoreVertical className="h-3 w-3" />
-                    </Button>
-                  )}
+                    {formatTime(msg.sentAt)}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`absolute -right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${
+                      isOwn ? 'bg-background/20 hover:bg-background/30 text-primary-foreground' : 'bg-primary/10 hover:bg-primary/20 text-foreground'
+                    }`}
+                    onClick={() => setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)}
+                  >
+                    <MoreVertical className="h-3 w-3" />
+                  </Button>
                   
                   {showMessageOptions === msg.id && (
                     <div className="absolute right-0 top-10 bg-background/95 backdrop-blur-md border border-border/50 rounded-lg shadow-lg z-10 min-w-[160px]">
@@ -116,18 +142,20 @@ const MessageList = ({
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete for me
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          onDeleteMessage(msg.id, true);
-                          setShowMessageOptions(null);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete for everyone
-                      </Button>
+                      {isOwn && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            onDeleteMessage(msg.id, true);
+                            setShowMessageOptions(null);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete for everyone
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -166,8 +194,17 @@ const MessageList = ({
       )}
        
       <div ref={messagesEndRef} />
+      
+      {lightboxImage && (
+        <ImageLightbox
+          src={lightboxImage.src}
+          alt={lightboxImage.alt}
+          isOpen={!!lightboxImage}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   );
 };
 
-export default MessageList; 
+export default MessageList;

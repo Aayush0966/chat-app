@@ -150,4 +150,27 @@ export const editMessage = async (messageId: string, text: string) => {
   return res.data;
 };
 
+export const sendImageMessage = async (chatId: string, file: File) => {
+  const formData = new FormData();
+  formData.append('attachment', file); // Server expects 'attachment', not 'image'
+  formData.append('chatId', chatId);
+  formData.append('messageType', 'ATTACHMENT'); // Server expects 'ATTACHMENT', not 'image'
+
+  const res = await axios.post(`${BASE_URL}/api/message`, formData, { // Use main message endpoint
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: (progressEvent) => {
+      // This can be used for upload progress tracking
+      if (progressEvent.total) {
+        const percentage = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        console.log(`Upload progress: ${percentage}%`);
+      }
+    },
+  });
+  
+  return res.data;
+};
+
 

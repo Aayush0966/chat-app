@@ -4,47 +4,91 @@ import { userServices } from "../services/user.services";
 import { messageServices } from "../services/message.services";
 import { Message } from "../types/chat.types";
 import { io } from "../server";
+import { cloudinaryService } from "../lib/cloudinary";
+import fs from 'fs';
+import path from 'path';
 
 export const messageController = {
     sendMessage: async (req: Request, res: Response): Promise<void> => {
-        const userId = req.user?.id || req.body.userId;
-        if (!userId) {
-            res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED });
-            return;
-        }
-        const { chatId, text, attachment, messageType } = req.body;
-        if (!chatId || !messageType) {
-            res.error({ error: "Insufficient parameters in payload", code: HTTP.BAD_REQUEST });
-            return;
-        }
-
-        if (!text && !attachment) {
-            res.error({
-                error: "Either text or attachment must be provided",
-                code: HTTP.BAD_REQUEST,
-            });
-            return;
-        }
-
-        const sender = await userServices.getUserById(userId);
-
-        if (!sender) {
-            res.error({ error: "Sender not found", code: HTTP.UNAUTHORIZED })
-            return;
-        }
-
-        if (messageType === "TEXT") {
-            const message: Message = {
-                senderId: userId,
-                type: "TEXT",
-                chatId,
-                text
+        const tempFiles: string[] = [];
+        try {
+            const userId = req.user?.id || req.body.userId;
+            if (!userId) {
+                res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED });
+                return;
             }
+
+            const chatId = req.body.chatId;
+            const attachment = req.file;
+            // Sanitize text input by removing extra quotes if present
+            const text = req.body.text ? JSON.parse(JSON.stringify(req.body.text)) : undefined;
+            const messageType = req.body.messageType;
+
+            console.log('Request payload:', {
+                chatId,
+                attachment,
+                text,
+                messageType,
+                userId
+            });
+
+
+            if (!chatId || !messageType) {
+                res.error({ error: "Insufficient parameters in payload", code: HTTP.BAD_REQUEST });
+                return;
+            }
+
+            if (!text && !attachment) {
+                res.error({
+                    error: "Either text or attachment must be provided",
+                    code: HTTP.BAD_REQUEST,
+                });
+                return;
+            }
+
+            const sender = await userServices.getUserById(userId);
+
+            if (!sender) {
+                res.error({ error: "Sender not found", code: HTTP.UNAUTHORIZED })
+                return;
+            }
+
+            let attachmentUrl: string | undefined;
+            
+            if (messageType === "ATTACHMENT" && attachment?.path) {
+                try {
+                    tempFiles.push(attachment.path);
+                    
+                    attachmentUrl = await cloudinaryService.uploadImage(attachment.path, 'userAttachment');
+                    if (!attachmentUrl) {
+                        throw new Error('Failed to get upload URL from Cloudinary');
+                    }
+                } catch (error) {
+                    console.error('Cloudinary upload error:', error);
+                    res.error({ 
+                        error: error instanceof Error ? error.message : "Failed to upload attachment", 
+                        code: HTTP.INTERNAL 
+                    });
+                    return;
+                }
+            }
+
+            let message: Message = {
+                senderId: userId,
+                type: messageType,
+                chatId,
+                text: messageType === "TEXT" ? text : '',
+                attachment: attachmentUrl
+            };
+
             const [error, result] = await messageServices.sendMessage(message);
 
-            io.to(chatId).emit("new-message", text);
             if (error) {
-                res.error({ error, code: HTTP.INTERNAL })
+                console.error('Message service error:', error);
+                res.error({ 
+                    error: typeof error === 'string' ? error : 'Failed to send message',
+                    code: HTTP.INTERNAL 
+                });
                 return;
             }
 
@@ -53,16 +97,32 @@ export const messageController = {
                 return;
             }
 
+            io.to(chatId).emit("new-message", result);
+
             res.success({
                 success: true,
                 message: "Message sent successfully",
                 code: HTTP.CREATED,
                 data: result
             });
-            return;
+        } catch (error) {
+            console.error('Message sending error:', error);
+            res.error({ 
+                error: error instanceof Error ? error.message : "Internal server error", 
+                code: HTTP.INTERNAL 
+            });
+        } finally {
+            for (const filePath of tempFiles) {
+                try {
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                        console.log(`Cleaned up temporary file: ${filePath}`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to clean up temporary file ${filePath}:`, error);
+                }
+            }
         }
-
-
     },
     getMessageByChat: async (req: Request, res: Response): Promise<void> => {
         const userId = req.user?.id;
@@ -163,8 +223,8 @@ export const messageController = {
     },
     searchMessage: async (req: Request, res: Response): Promise<void> => {
         const user = req.user?.id;
-        const {chatId, message} = req.query;
-        console.log("ChatId: ", chatId )
+        const { chatId, message } = req.query;
+        console.log("ChatId: ", chatId)
         console.log("message: ", message)
         if (!user) {
             res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED })
@@ -188,7 +248,7 @@ export const messageController = {
         }
         res.success({
             message: "Message found successfully",
-            code:HTTP.OK,
+            code: HTTP.OK,
             data
         })
     }

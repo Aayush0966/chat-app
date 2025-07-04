@@ -3,4 +3,7 @@ export { default as ChatHeader } from './ChatHeader';
 export { default as MessageList } from './MessageList';
 export { default as MessageInput } from './MessageInput';
 export { default as NewChatModal } from './NewChatModal';
-export { default as EmptyState } from './EmptyState'; 
+export { default as EmptyState } from './EmptyState';
+export { default as ImageUpload } from './ImageUpload';
+export { default as ImageLightbox } from './ImageLightbox';
+export { default as ImageSkeleton } from './ImageSkeleton';

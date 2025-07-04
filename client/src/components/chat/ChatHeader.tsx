@@ -11,10 +11,13 @@ import {
 
 interface ChatHeaderProps {
   selectedChat: Chat;
+  onlineUsers?: Record<string, boolean>;
   onMobileMenuToggle: () => void;
 }
 
-const ChatHeader = ({ selectedChat, onMobileMenuToggle }: ChatHeaderProps) => {
+const ChatHeader = ({ selectedChat, onlineUsers, onMobileMenuToggle }: ChatHeaderProps) => {
+  const isOnline = !selectedChat.isGroup && selectedChat.userId && onlineUsers?.[selectedChat.userId];
+  
   return (
     <div className="p-4 border-b border-border/50 flex items-center justify-between bg-background/80 backdrop-blur-md shadow-sm">
       <div className="flex items-center gap-3">
@@ -34,13 +37,25 @@ const ChatHeader = ({ selectedChat, onMobileMenuToggle }: ChatHeaderProps) => {
               selectedChat.name.split(' ').map(n => n.charAt(0)).join('').substring(0, 2)
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+          {isOnline && (
+            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+          )}
         </div>
         <div>
           <h2 className="font-semibold text-foreground">{selectedChat.name}</h2>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-            {selectedChat.isGroup ? "Group chat • Active" : "Active now"}
+            {!selectedChat.isGroup && (
+              <>
+                <Circle className={`h-2 w-2 ${isOnline ? 'fill-green-500 text-green-500' : 'fill-gray-400 text-gray-400'}`} />
+                {isOnline ? 'Active now' : 'Offline'}
+              </>
+            )}
+            {selectedChat.isGroup && (
+              <>
+                <Users className="h-3 w-3" />
+                Group chat
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -60,4 +75,4 @@ const ChatHeader = ({ selectedChat, onMobileMenuToggle }: ChatHeaderProps) => {
   );
 };
 
-export default ChatHeader; 
+export default ChatHeader;

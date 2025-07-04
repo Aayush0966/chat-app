@@ -271,9 +271,23 @@ export const authController = {
         }
     },
     logout: async (req: Request, res: Response): Promise<void> => {
-        res.cookie('_sid', '', { maxAge: 0 });
-        res.cookie('_rid', '', { maxAge: 0 });
+        try {
+            // Clear refresh token cookie
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax'
+            });
 
-        res.success({success: true, message: "Logout successfully", code: HTTP.OK})
+            res.success({
+                message: "Logged out successfully",
+                code: HTTP.OK
+            });
+        } catch (error) {
+            res.error({
+                error: "Failed to logout",
+                code: HTTP.INTERNAL
+            });
+        }
     }
 }

@@ -105,8 +105,10 @@ export const chatController = {
                     ? chat.name
                     : `${otherUser?.firstName ?? ""} ${otherUser?.lastName ?? ""}`.trim(),
                 isGroup: chat.isGroup,
+                userId: chat.isGroup ? undefined : otherUser?.id,
                 lastMessage: lastMessage?.text || lastMessage?.attachment || null,
                 lastMessageTime: lastMessage?.sentAt,
+                lastMessageSenderId: lastMessage?.senderId || null,
             };
         });
 

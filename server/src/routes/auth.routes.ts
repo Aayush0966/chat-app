@@ -11,3 +11,4 @@ authRouter.post("/refresh", authController.refreshAccessToken);
 authRouter.post("/forget-password", authController.forgetPassword);
 authRouter.post("/validate-otp", authController.validateOTP);
 authRouter.post("/reset-password", authController.resetPassword);
+authRouter.post("/logout", authController.logout);
