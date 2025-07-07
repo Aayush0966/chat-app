@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Homepage from "@/pages/HomePage";
 import RootLayout from "@/components/layouts/RootLayout";
 import Login from "@/pages/Login";
@@ -11,6 +11,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<RootLayout />}>
+          <Route index element={<Navigate to="/home" replace />} />
           <Route path="home" element={<Homepage />} />
           <Route element={<AuthLayout />}>
             <Route path="/auth/">

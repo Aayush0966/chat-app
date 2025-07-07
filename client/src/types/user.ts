@@ -51,6 +51,7 @@ export interface Chat {
   lastMessageSenderId?: string;
   lastMessage: string | null;
   lastMessageTime: string | null;
+  lastMessageType?: string | null;
 }
 
 export interface Message {

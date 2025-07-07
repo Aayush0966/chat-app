@@ -24,6 +24,8 @@ const HomePage = () => {
     isMobileSidebarOpen,
     typingText,
     onlineUsers,
+    loadingOlderMessages,
+    hasMoreMessages,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -38,6 +40,7 @@ const HomePage = () => {
     handleLogout,
     handleChatSelect,
     handleSendImage,
+    loadOlderMessages,
   } = useChat();
   
   if (showNewChat) {
@@ -95,7 +98,10 @@ const HomePage = () => {
               selectedChat={selectedChat}
               messagesLoading={messagesLoading}
               typingText={typingText}
+              loadingOlderMessages={loadingOlderMessages}
+              hasMoreMessages={hasMoreMessages}
               onDeleteMessage={handleDeleteMessage}
+              onLoadOlderMessages={loadOlderMessages}
             />
             
             <MessageInput

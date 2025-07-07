@@ -6,7 +6,6 @@ import { Message } from "../types/chat.types";
 import { io } from "../server";
 import { cloudinaryService } from "../lib/cloudinary";
 import fs from 'fs';
-import path from 'path';
 
 export const messageController = {
     sendMessage: async (req: Request, res: Response): Promise<void> => {
@@ -54,20 +53,20 @@ export const messageController = {
             }
 
             let attachmentUrl: string | undefined;
-            
+
             if (messageType === "ATTACHMENT" && attachment?.path) {
                 try {
                     tempFiles.push(attachment.path);
-                    
+
                     attachmentUrl = await cloudinaryService.uploadImage(attachment.path, 'userAttachment');
                     if (!attachmentUrl) {
                         throw new Error('Failed to get upload URL from Cloudinary');
                     }
                 } catch (error) {
                     console.error('Cloudinary upload error:', error);
-                    res.error({ 
-                        error: error instanceof Error ? error.message : "Failed to upload attachment", 
-                        code: HTTP.INTERNAL 
+                    res.error({
+                        error: error instanceof Error ? error.message : "Failed to upload attachment",
+                        code: HTTP.INTERNAL
                     });
                     return;
                 }
@@ -85,9 +84,9 @@ export const messageController = {
 
             if (error) {
                 console.error('Message service error:', error);
-                res.error({ 
+                res.error({
                     error: typeof error === 'string' ? error : 'Failed to send message',
-                    code: HTTP.INTERNAL 
+                    code: HTTP.INTERNAL
                 });
                 return;
             }
@@ -107,9 +106,9 @@ export const messageController = {
             });
         } catch (error) {
             console.error('Message sending error:', error);
-            res.error({ 
-                error: error instanceof Error ? error.message : "Internal server error", 
-                code: HTTP.INTERNAL 
+            res.error({
+                error: error instanceof Error ? error.message : "Internal server error",
+                code: HTTP.INTERNAL
             });
         } finally {
             for (const filePath of tempFiles) {
@@ -126,35 +125,60 @@ export const messageController = {
     },
     getMessageByChat: async (req: Request, res: Response): Promise<void> => {
         const userId = req.user?.id;
+        const { chatId } = req.params;
+        const { limit = "10", cursor } = req.query;
 
         if (!userId) {
-            res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED })
-            return;
-        }
-        const chatId = req.params.chatId;
-        const { cursor, limit = 20 } = req.query;
-        if (!chatId) {
-            res.error({ error: "chatId is required", code: HTTP.BAD_REQUEST });
+            res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED });
             return;
         }
 
-        const [error, result] = await messageServices.getMessageByChatId(String(chatId), Number(limit), String(userId), cursor ? String(cursor) : undefined);
+        if (!chatId) {
+            res.error({ error: "Chat ID is required", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const limitNum = parseInt(limit as string, 10);
+        if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+            res.error({ error: "Limit must be between 1 and 50", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const [error, messages] = await messageServices.getMessageByChatId(
+            chatId,
+            limitNum,
+            userId,
+            cursor as string
+        );
 
         if (error) {
             res.error({ error, code: HTTP.INTERNAL });
             return;
         }
 
-        if (!result || result.length === 0) {
-            res.error({ error: "No messages found", code: HTTP.NOT_FOUND });
+        if (!messages) {
+            res.success({
+                message: "No messages found",
+                data: [],
+                code: HTTP.OK
+            });
             return;
         }
 
+        // Don't reverse messages - they're already in correct order from service
+        // (oldest to newest for display)
+
+        // Get cursor for next page (oldest message id from current batch - which is now at index 0)
+        const nextCursor = messages.length === limitNum ? messages[0]?.id : null;
+
         res.success({
-            success: true,
             message: "Messages fetched successfully",
-            code: HTTP.OK,
-            data: result
+            data: {
+                messages: messages,
+                nextCursor,
+                hasMore: messages.length === limitNum
+            },
+            code: HTTP.OK
         });
     },
     removeMessageForYourself: async (req: Request, res: Response): Promise<void> => {
@@ -251,5 +275,91 @@ export const messageController = {
             code: HTTP.OK,
             data
         })
-    }
+    },
+    readMessage: async (req: Request, res: Response): Promise<void> => {
+        const userId = req.user?.id;
+        const { messageId } = req.query;
+
+        if (!userId) {
+            res.error({ error: "Unauthorized", code: HTTP.UNAUTHORIZED })
+            return;
+        }
+
+        if (!messageId) {
+            res.error({ error: "Message ID is required", code: HTTP.BAD_REQUEST })
+            return;
+        }
+
+        const [err, result] = await messageServices.markMessageAsRead(String(messageId), userId);
+        if (err) {
+            res.error({ error: err, code: HTTP.INTERNAL });
+            return;
+        }
+
+        if (!result) {
+            res.error({ error: "Something went wrong", code: HTTP.BAD_REQUEST })
+            return;
+        }
+
+        res.success({
+            success: true,
+            message: "Messages marked as read",
+            code: HTTP.OK
+        })
+
+    },
+    markAllMessagesAsReadByChat: async (req: Request, res: Response): Promise<void> => {
+        const userId = req.user?.id;
+        const { chatId } = req.params;
+
+        if (!userId || !chatId) {
+            res.error({ error: "Missing user or chat ID", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const result = await messageServices.markAllMessagesAsReadByChat(chatId, userId);
+        res.success(result);
+    },
+    getUnreadMessagesByChat: async (req: Request, res: Response): Promise<void> => {
+        const userId = req.user?.id;
+        const { chatId } = req.params;
+
+        if (!userId || !chatId) {
+            res.error({ error: "Missing user or chat ID", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const [err, messages] = await messageServices.getUnreadMessagesByChat(chatId, userId);
+        if (err) {
+            res.error({ error: err, code: HTTP.INTERNAL });
+            return;
+        }
+
+        res.success({
+            success: true,
+            code: HTTP.OK,
+            data: messages,
+        });
+    },
+    getReadStatusOfMessage: async (req: Request, res: Response): Promise<void> => {
+        const { messageId } = req.params;
+
+        if (!messageId) {
+            res.error({ error: "Message ID is required", code: HTTP.BAD_REQUEST });
+            return;
+        }
+
+        const [err, status] = await messageServices.getMessageReadStatus(messageId);
+        if (err) {
+            res.error({ error: err, code: HTTP.INTERNAL });
+            return;
+        }
+
+        res.success({
+            success: true,
+            code: HTTP.OK,
+            data: status,
+        });
+    },
+
 };

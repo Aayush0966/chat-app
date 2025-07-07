@@ -127,6 +127,9 @@ model MessageRead {
 
   message Message @relation(fields: [messageId], references: [id])
   user    User    @relation(fields: [userId], references: [id])
+
+
+  @@unique([messageId, userId])
 }
 
 model MessageReaction {

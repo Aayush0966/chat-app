@@ -89,7 +89,7 @@ export const sendMessage = async (data: SendMessageInput) => {
   return res.data;
 };
 
-export const getMessagesByChat = async (chatId: string, limit: number = 20, cursor?: string) => {
+export const getMessagesByChat = async (chatId: string, limit: number = 10, cursor?: string) => {
   const params = new URLSearchParams({ limit: limit.toString() });
   if (cursor) params.append('cursor', cursor);
   
@@ -116,7 +116,6 @@ export const logout = async () => {
     withCredentials: true,
   });
   
-  // Clear stored user data
   localStorage.removeItem('currentUser');
   
   return res.data;
