@@ -31,6 +31,9 @@ export const useChat = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [messageCache, setMessageCache] = useState<Record<string, Message[]>>({});
+  const [messageCursors, setMessageCursors] = useState<Record<string, string | null>>({});
+  const [hasMoreMessages, setHasMoreMessages] = useState<Record<string, boolean>>({});
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
 
@@ -76,6 +79,12 @@ export const useChat = () => {
 
   useEffect(() => {
     if (selectedChat) {
+      // Reset pagination state for new chat
+      setHasMoreMessages(prev => ({
+        ...prev,
+        [selectedChat.id]: true // Assume there might be more messages initially
+      }));
+      
       // Check if messages are already cached for this chat
       if (messageCache[selectedChat.id]) {
         setMessages(messageCache[selectedChat.id]);
@@ -95,22 +104,71 @@ export const useChat = () => {
     };
   }, [selectedChat?.id, typingTimeout]);
 
-  const fetchMessages = async (chatId: string) => {
+  const fetchMessages = async (chatId: string, cursor?: string) => {
     setMessagesLoading(true);
     try {
-      const res = await getMessagesByChat(chatId);
-      const fetchedMessages = res.data ? res.data.reverse() : [];
-      setMessages(fetchedMessages);
-      // Cache the messages for this chat
-      setMessageCache(prev => ({
-        ...prev,
-        [chatId]: fetchedMessages
-      }));
+      const res = await getMessagesByChat(chatId, 10, cursor);
+      const responseData = res.data;
+      
+      if (responseData && responseData.messages) {
+        const fetchedMessages = responseData.messages;
+        
+        if (cursor) {
+          // Loading older messages - prepend to existing messages
+          setMessages(prev => [...fetchedMessages, ...prev]);
+          setMessageCache(prev => ({
+            ...prev,
+            [chatId]: [...fetchedMessages, ...(prev[chatId] || [])]
+          }));
+        } else {
+          // Initial load - set messages directly
+          setMessages(fetchedMessages);
+          setMessageCache(prev => ({
+            ...prev,
+            [chatId]: fetchedMessages
+          }));
+        }
+        
+        // Update pagination state
+        setMessageCursors(prev => ({
+          ...prev,
+          [chatId]: responseData.nextCursor
+        }));
+        
+        setHasMoreMessages(prev => ({
+          ...prev,
+          [chatId]: responseData.hasMore
+        }));
+      } else {
+        if (!cursor) {
+          setMessages([]);
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch messages:", err);
-      setMessages([]);
+      if (!cursor) {
+        setMessages([]);
+      }
     } finally {
       setMessagesLoading(false);
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!selectedChat?.id || loadingOlderMessages || !hasMoreMessages[selectedChat.id]) {
+      return;
+    }
+
+    setLoadingOlderMessages(true);
+    try {
+      const cursor = messageCursors[selectedChat.id];
+      if (cursor) {
+        await fetchMessages(selectedChat.id, cursor);
+      }
+    } catch (err) {
+      console.error("Failed to load older messages:", err);
+    } finally {
+      setLoadingOlderMessages(false);
     }
   };
 
@@ -213,7 +271,8 @@ export const useChat = () => {
                 ...chat, 
                 lastMessage: messageText, 
                 lastMessageTime: new Date().toISOString(),
-                lastMessageSenderId: currentUser?.id
+                lastMessageSenderId: currentUser?.id,
+                lastMessageType: "TEXT"
               }
             : chat
         ));
@@ -273,7 +332,8 @@ export const useChat = () => {
             name: userName,
             isGroup: false,
             lastMessage: null,
-            lastMessageTime: null
+            lastMessageTime: null,
+            lastMessageType: null
           };
           
           setChats(prev => [newChat, ...prev]);
@@ -472,7 +532,8 @@ export const useChat = () => {
                 ...chat, 
                 lastMessage: "📷 Image", 
                 lastMessageTime: new Date().toISOString(),
-                lastMessageSenderId: currentUser.id
+                lastMessageSenderId: currentUser.id,
+                lastMessageType: "ATTACHMENT"
               }
             : chat
         ));
@@ -513,6 +574,8 @@ export const useChat = () => {
     isMobileSidebarOpen,
     typingText,
     onlineUsers,
+    loadingOlderMessages,
+    hasMoreMessages: hasMoreMessages[selectedChat?.id || ''] || false,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -527,5 +590,6 @@ export const useChat = () => {
     handleTyping,
     handleChatSelect,
     handleSendImage,
+    loadOlderMessages,
   };
 };

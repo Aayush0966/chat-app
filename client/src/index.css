@@ -41,6 +41,25 @@
     border-radius: 3px;
   }
 
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+
+  .chat-container {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .chat-messages {
+    display: flex;
+    flex-direction: column;
+  }
+
   .glass-morphism {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(16px);

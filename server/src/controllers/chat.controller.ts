@@ -109,6 +109,7 @@ export const chatController = {
                 lastMessage: lastMessage?.text || lastMessage?.attachment || null,
                 lastMessageTime: lastMessage?.sentAt,
                 lastMessageSenderId: lastMessage?.senderId || null,
+                lastMessageType: lastMessage.type 
             };
         });
 

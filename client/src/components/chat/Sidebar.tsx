@@ -95,6 +95,11 @@ const Sidebar = ({
     setSearchQuery('');
   };
 
+
+  chats.map((ch) => {
+    console.log(ch.lastMessageType)
+  })
+
   return (
     <div className={`w-80 flex flex-col z-50 bg-background/95 backdrop-blur-xl border-r border-border/50 md:relative absolute inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none`}>
       {/* Header Section */}
@@ -267,8 +272,8 @@ const Sidebar = ({
                         <Circle className="h-2 w-2 fill-green-500 text-green-500" />
                       )}
                       <p className="text-sm text-muted-foreground truncate">
-                        {chat.lastMessage 
-                          ? (currentUser?.id === chat.lastMessageSenderId ? "You: " : "") + chat.lastMessage
+                        {chat.lastMessage
+                          ? (currentUser?.id === chat.lastMessageSenderId ? "You: " : "") + (chat.lastMessageType === 'TEXT' ? chat.lastMessage : 'image')
                           : (chat.isGroup ? "No messages yet" : "Start a conversation")}
                       </p>
                     </div>

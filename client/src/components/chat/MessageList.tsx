@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ImageLightbox } from "@/components/chat";
@@ -14,8 +14,11 @@ interface MessageListProps {
   currentUser: User | null;
   selectedChat: Chat;
   messagesLoading: boolean;
+  loadingOlderMessages: boolean;
+  hasMoreMessages: boolean;
   typingText?: string;
   onDeleteMessage: (messageId: string, deleteForBoth: boolean) => void;
+  onLoadOlderMessages: () => void;
 }
 
 const MessageList = ({ 
@@ -23,20 +26,96 @@ const MessageList = ({
   currentUser, 
   selectedChat, 
   messagesLoading, 
+  loadingOlderMessages,
+  hasMoreMessages,
   typingText,
-  onDeleteMessage 
+  onDeleteMessage,
+  onLoadOlderMessages
 }: MessageListProps) => {
   const [showMessageOptions, setShowMessageOptions] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{src: string, alt: string} | null>(null);
+  const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ 
+      behavior: smooth ? "smooth" : "auto" 
+    });
   };
 
+  // Handle image load events
+  const handleImageLoad = useCallback(() => {
+    // Scroll to bottom when images load to maintain position
+    if (hasInitiallyScrolled) {
+      scrollToBottom();
+    }
+  }, [hasInitiallyScrolled]);
+
+  // Enhanced scroll function that waits for images
+  const scrollToBottomWithImageWait = useCallback((smooth = true) => {
+    // Clear any existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    // Initial scroll
+    scrollToBottom(smooth);
+
+    // Set up additional scrolls to handle image loading
+    const scrollDelays = [100, 300, 600, 1000]; // Progressive delays
+    
+    scrollDelays.forEach(delay => {
+      scrollTimeoutRef.current = setTimeout(() => {
+        scrollToBottom(false);
+      }, delay);
+    });
+  }, []);
+
+  // Reset scroll state when chat changes
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, typingText]);
+    setHasInitiallyScrolled(false);
+  }, [selectedChat.id]);
+
+  // Enhanced scroll to bottom effect for initial load and chat changes
+  useEffect(() => {
+    if (!messagesLoading && messages.length > 0 && !hasInitiallyScrolled) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollToBottomWithImageWait(false);
+          setHasInitiallyScrolled(true);
+        }, 0);
+      });
+    }
+  }, [messagesLoading, messages.length, hasInitiallyScrolled, selectedChat.id, scrollToBottomWithImageWait]);
+
+  // Smooth scroll for new messages after initial load
+  useEffect(() => {
+    if (hasInitiallyScrolled && !messagesLoading) {
+      scrollToBottom();
+    }
+  }, [messages, typingText, hasInitiallyScrolled, messagesLoading]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle scroll event for loading older messages
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop } = e.currentTarget;
+    
+    // If user scrolled to near the top (within 100px) and there are more messages
+    if (scrollTop < 100 && hasMoreMessages && !loadingOlderMessages && !messagesLoading) {
+      onLoadOlderMessages();
+    }
+  }, [hasMoreMessages, loadingOlderMessages, messagesLoading, onLoadOlderMessages]);
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -53,8 +132,20 @@ const MessageList = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-background/20">
-      {messagesLoading ? (
+    <div 
+      ref={containerRef}
+      className="flex-1 overflow-y-auto bg-background/20 scrollbar-hide"
+      onScroll={handleScroll}
+    >
+      <div className="min-h-full flex flex-col justify-end p-4 space-y-4">
+        {/* Loading indicator for older messages */}
+        {loadingOlderMessages && (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+          </div>
+        )}
+        
+        {messagesLoading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
             <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
@@ -96,6 +187,7 @@ const MessageList = ({
                             msg.isUploading ? 'opacity-70' : ''
                           }`}
                           onClick={() => !msg.isUploading && setLightboxImage({src: msg.attachment!, alt: "Shared image"})}
+                          onLoad={handleImageLoad}
                           loading="lazy"
                         />
                         {msg.isUploading && (
@@ -203,6 +295,7 @@ const MessageList = ({
           onClose={() => setLightboxImage(null)}
         />
       )}
+      </div>
     </div>
   );
 };
