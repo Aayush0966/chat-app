@@ -26,6 +26,7 @@ const HomePage = () => {
     onlineUsers,
     loadingOlderMessages,
     hasMoreMessages,
+    socket,
     setMessage,
     setSearchQuery,
     setShowNewChat,
@@ -102,6 +103,7 @@ const HomePage = () => {
               hasMoreMessages={hasMoreMessages}
               onDeleteMessage={handleDeleteMessage}
               onLoadOlderMessages={loadOlderMessages}
+              socket={socket}
             />
             
             <MessageInput

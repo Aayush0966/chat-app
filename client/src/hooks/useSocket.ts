@@ -200,7 +200,12 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
         const handleMessageRead = (data: { messageId: string, chatId: string, userId: string }) => {
             if (selectedChat && data.chatId === selectedChat.id) {
                 setMessages((prev: Message[]) => prev.map(msg => 
-                    msg.id === data.messageId ? { ...msg, readBy: [...(msg.readBy || []), data.userId] } : msg
+                    msg.id === data.messageId ? { 
+                        ...msg, 
+                        readBy: msg.readBy?.includes(data.userId) 
+                            ? msg.readBy 
+                            : [...(msg.readBy || []), data.userId] 
+                    } : msg
                 ));
             }
 
@@ -209,7 +214,12 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
                 return {
                     ...prevCache,
                     [data.chatId]: chatMessages.map(msg => 
-                        msg.id === data.messageId ? { ...msg, readBy: [...(msg.readBy || []), data.userId] } : msg
+                        msg.id === data.messageId ? { 
+                            ...msg, 
+                            readBy: msg.readBy?.includes(data.userId) 
+                                ? msg.readBy 
+                                : [...(msg.readBy || []), data.userId] 
+                        } : msg
                     )
                 };
             });
