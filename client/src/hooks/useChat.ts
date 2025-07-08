@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   getChatsByUser, 
-  sendMessage, 
   getMessagesByChat, 
   searchUsers, 
   createChat, 
@@ -10,7 +9,8 @@ import {
   deleteChatForUser, 
   deleteMessageForYourself, 
   deleteMessageForBoth,
-  sendImageMessage
+  sendImageMessage,
+  getUnreadMessages
 } from "@/services/api";
 import { useSocket } from "@/hooks/useSocket";
 import type { Chat, Message, User } from "@/types/user";
@@ -36,6 +36,7 @@ export const useChat = () => {
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [readChats, setReadChats] = useState<Set<string>>(new Set());
 
   // Get socket and typing information
   const { socket, typingText, onlineUsers } = useSocket({ 
@@ -78,21 +79,22 @@ export const useChat = () => {
 
 
   useEffect(() => {
-    if (selectedChat) {
-      // Reset pagination state for new chat
-      setHasMoreMessages(prev => ({
-        ...prev,
-        [selectedChat.id]: true // Assume there might be more messages initially
-      }));
-      
-      // Check if messages are already cached for this chat
+    if (selectedChat && !readChats.has(selectedChat.id)) {
+      if (currentUser?.id) {
+        socket.emit("message:readAll", selectedChat.id);
+        setReadChats(prev => {
+          const updated = new Set(prev).add(selectedChat.id);
+          return updated;
+        });
+      }
+
       if (messageCache[selectedChat.id]) {
         setMessages(messageCache[selectedChat.id]);
       } else {
         fetchMessages(selectedChat.id);
       }
     }
-  }, [selectedChat, messageCache]);
+  }, [selectedChat, messageCache, currentUser?.id, socket, readChats]);
 
   // Separate effect for handling typing cleanup when changing chats
   useEffect(() => {
@@ -109,10 +111,13 @@ export const useChat = () => {
     try {
       const res = await getMessagesByChat(chatId, 10, cursor);
       const responseData = res.data;
-      
+
       if (responseData && responseData.messages) {
-        const fetchedMessages = responseData.messages;
-        
+        const fetchedMessages = responseData.messages.map((msg: Message & { reads?: { userId: string }[] }) => ({
+          ...msg,
+          readBy: msg.reads?.map(read => read.userId) || [] // Map reads to readBy
+        }));
+
         if (cursor) {
           // Loading older messages - prepend to existing messages
           setMessages(prev => [...fetchedMessages, ...prev]);
@@ -128,13 +133,13 @@ export const useChat = () => {
             [chatId]: fetchedMessages
           }));
         }
-        
+
         // Update pagination state
         setMessageCursors(prev => ({
           ...prev,
           [chatId]: responseData.nextCursor
         }));
-        
+
         setHasMoreMessages(prev => ({
           ...prev,
           [chatId]: responseData.hasMore
@@ -191,14 +196,11 @@ export const useChat = () => {
 
     // If not already typing, emit start typing to server
     if (!isTyping) {
-      console.log('Starting to type, emitting typing event');
       setIsTyping(true);
       socket.emit("typing", typingDetails);
     }
 
-    // Set new timeout to stop typing after 5 seconds of inactivity
     const timeout = setTimeout(() => {
-      console.log('Stopping typing due to inactivity');
       setIsTyping(false);
       socket.emit("stopTyping", typingDetails);
       setTypingTimeout(null);
@@ -227,66 +229,49 @@ export const useChat = () => {
     
     const messageText = message;
     const tempMessage: Message = {
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
       chatId: selectedChat.id,
       senderId: currentUser?.id || "temp",
       text: messageText,
       sentAt: new Date().toISOString(),
       type: "TEXT",
-      sender: currentUser || undefined
+      sender: currentUser || undefined,
+      isTemp: true
     };
     
-    socket.emit("newMessage", tempMessage)
+    socket.emit("newMessage", tempMessage, (response: { success: boolean; message?: Message }) => {
+      if (response.success && response.message) {
+        const updateWithServerMessage = (prev: Message[]) => 
+          prev.map(msg => msg.id === tempMessage.id ? response.message! : msg);
+        
+        setMessages(prev => updateWithServerMessage(prev));
+        setMessageCache(prevCache => ({
+          ...prevCache,
+          [selectedChat.id]: updateWithServerMessage(prevCache[selectedChat.id] || [])
+        }));
+      }
+    });
 
     const updateMessages = (prev: Message[]) => [...prev, tempMessage];
     setMessages(updateMessages);
-    // Update cache as well
     setMessageCache(prevCache => ({
       ...prevCache,
       [selectedChat.id]: updateMessages(prevCache[selectedChat.id] || [])
     }));
     setMessage("");
     
-    try {
-      const res = await sendMessage({
-        chatId: selectedChat.id,
-        text: messageText,
-        messageType: "TEXT",
-      });
-      
-      if (res?.data) {
-        const updateWithServerMessage = (prev: Message[]) => prev.map(msg => 
-          msg.id === tempMessage.id ? res.data : msg
-        );
-        setMessages(updateWithServerMessage);
-        // Update cache with server response
-        setMessageCache(prevCache => ({
-          ...prevCache,
-          [selectedChat.id]: updateWithServerMessage(prevCache[selectedChat.id] || [])
-        }));
-        
-        setChats(prev => prev.map(chat => 
-          chat.id === selectedChat.id 
-            ? { 
-                ...chat, 
-                lastMessage: messageText, 
-                lastMessageTime: new Date().toISOString(),
-                lastMessageSenderId: currentUser?.id,
-                lastMessageType: "TEXT"
-              }
-            : chat
-        ));
-      }
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      const removeFailedMessage = (prev: Message[]) => prev.filter(msg => msg.id !== tempMessage.id);
-      setMessages(removeFailedMessage);
-      // Remove failed message from cache as well
-      setMessageCache(prevCache => ({
-        ...prevCache,
-        [selectedChat.id]: removeFailedMessage(prevCache[selectedChat.id] || [])
-      }));
-    }
+    // Update chat list with new message
+    setChats(prev => prev.map(chat => 
+      chat.id === selectedChat.id 
+        ? { 
+            ...chat, 
+            lastMessage: messageText, 
+            lastMessageTime: new Date().toISOString(),
+            lastMessageSenderId: currentUser?.id,
+            lastMessageType: "TEXT"
+          }
+        : chat
+    ));
   };
 
   const handleUserSearch = useCallback(async (query: string) => {
@@ -477,7 +462,6 @@ export const useChat = () => {
   const handleSendImage = async (file: File) => {
     if (!selectedChat || !currentUser) return;
     
-    // Create a temporary message with loading state for immediate UI feedback
     const tempMessage: Message = {
       id: Date.now().toString(),
       chatId: selectedChat.id,
@@ -485,8 +469,8 @@ export const useChat = () => {
       text: "",
       sentAt: new Date().toISOString(),
       type: "ATTACHMENT",
-      attachment: URL.createObjectURL(file), // Temporary blob URL for preview
-      isUploading: true, // Flag to show loading state
+      attachment: URL.createObjectURL(file),
+      isUploading: true,
       sender: currentUser
     };
     
@@ -558,6 +542,127 @@ export const useChat = () => {
       throw err; // Re-throw for the ImageUpload component to handle
     }
   };
+
+  const handleMarkMessageAsRead = useCallback((messageId: string) => {
+    if (selectedChat && currentUser?.id) {
+      // Find the message to check if current user is the receiver
+      const message = messages.find(msg => msg.id === messageId);
+      if (!message || message.senderId === currentUser.id) {
+        // Don't mark as read if message not found or current user is the sender
+        return;
+      }
+
+      socket.emit("message:read", messageId, selectedChat.id, (response: { success: boolean; error?: string }) => {
+        if (response?.success) {
+          setReadChats((prev) => {
+            const updated = new Set(prev);
+            updated.add(selectedChat.id);
+            console.log(`[DEBUG] Updated readChats state:`, Array.from(updated));
+            return updated;
+          });
+        } else {
+          console.error(`Failed to mark message as read on server: ${messageId}`, response?.error);
+        }
+      });
+    }
+  }, [selectedChat, currentUser?.id, socket, messages]);
+
+  useEffect(() => {
+    if (messages.length > 0 && currentUser?.id) {
+      const unreadMessages = messages.filter(msg => 
+        !msg.readBy?.includes(currentUser.id) && 
+        msg.senderId !== currentUser.id
+      );
+
+      if (unreadMessages.length === 0) {
+        return;
+      }
+
+      unreadMessages.forEach(unreadMessage => {
+        handleMarkMessageAsRead(unreadMessage.id);
+        // Update the readBy property locally
+        setMessages(prevMessages => prevMessages.map(msg => 
+          msg.id === unreadMessage.id 
+            ? { ...msg, readBy: [...(msg.readBy || []), currentUser.id] }
+            : msg
+        ));
+      });
+    }
+  }, [messages, currentUser?.id, handleMarkMessageAsRead]);
+
+  useEffect(() => {
+    const handleMessageReadNotify = (data: { messageId: string, userId: string, chatId: string }) => {
+      setMessages(prevMessages => prevMessages.map(msg => {
+        if (msg.id === data.messageId) {
+          const readBy = Array.from(new Set([...(msg.readBy || []), data.userId]));
+          console.log("[DEBUG] Updated readBy array for message:", msg.id, readBy);
+          return { ...msg, readBy };
+        }
+        return msg;
+      }));
+
+      // Also update the message cache
+      if (selectedChat) {
+        setMessageCache(prevCache => ({
+          ...prevCache,
+          [selectedChat.id]: prevCache[selectedChat.id]?.map(msg => {
+            if (msg.id === data.messageId) {
+              const readBy = Array.from(new Set([...(msg.readBy || []), data.userId]));
+              return { ...msg, readBy };
+            }
+            return msg;
+          }) || []
+        }));
+      }
+    };
+
+    const handleChatReadAllNotify = (data: { chatId: string, userId: string }) => {
+      if (selectedChat?.id === data.chatId) {
+        setMessages(prevMessages => prevMessages.map(msg => 
+          ({ ...msg, readBy: [...(msg.readBy || []), data.userId] })
+        ));
+      }
+    };
+
+    socket.on("message:notify", handleMessageReadNotify);
+    socket.on("chat:readAll:notify", handleChatReadAllNotify);
+
+    return () => {
+      socket.off("message:notify", handleMessageReadNotify);
+      socket.off("chat:readAll:notify", handleChatReadAllNotify);
+    };
+  }, [socket, selectedChat]);
+
+  useEffect(() => {
+    const fetchUnreadMessages = async () => {
+      if (selectedChat && currentUser?.id) {
+        try {
+          console.log("[DEBUG] Fetching unread messages for chat:", selectedChat.id);
+          const unreadMessages = await getUnreadMessages(selectedChat.id);
+
+          if (!unreadMessages || unreadMessages.length === 0) {
+            console.log("[DEBUG] No unread messages available for chat:", selectedChat.id);
+            return; // Stop further processing if no unread messages are found
+          }
+
+          console.log("[DEBUG] Unread messages fetched:", unreadMessages);
+          setMessages(prevMessages => prevMessages.map(msg => {
+            const isUnread = unreadMessages.some((unread: { id: string }) => unread.id === msg.id);
+            return isUnread ? { ...msg, isUnread: true } : msg;
+          }));
+        } catch (err) {
+          const axiosError = err as AxiosError;
+          if (axiosError.response?.status === 404) {
+            console.log("[DEBUG] No unread messages found (404):", axiosError);
+          } else {
+            console.error("[DEBUG] Failed to fetch unread messages:", axiosError);
+          }
+        }
+      }
+    };
+
+    fetchUnreadMessages();
+  }, [selectedChat, currentUser?.id]);
 
   return {
     chats,

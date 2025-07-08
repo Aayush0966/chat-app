@@ -63,11 +63,14 @@ export interface Message {
   type: string;
   attachment?: string; // Server uses 'attachment' field for image URLs
   isUploading?: boolean; // Flag to show loading state for image uploads
+  isTemp?: boolean; // Flag to identify temporary messages
   sender?: {
     id: string;
     firstName: string;
     lastName: string;
   };
+  readBy?: string[]; // Array of user IDs who have read the message
+  delivered?: boolean; // Indicates if the message has been delivered
 }
 
 export interface SendMessageInput {

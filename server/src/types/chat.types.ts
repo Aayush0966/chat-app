@@ -10,6 +10,7 @@ export interface Chat {
 }
 
 export interface Message {
+    id? : string;
     senderId: string;
     chatId: string;
     type: MessageType
