@@ -72,52 +72,61 @@ export const chatController = {
 
     },
     getChatsByUser: async (req: Request, res: Response): Promise<void> => {
-        const userId = req.user?.id || req.body.userId;
+        try {
+            const userId = req.user?.id || req.body.userId;
 
-        if (!userId) {
-            res.error({error: "Unauthorized", code: HTTP.UNAUTHORIZED});
-            return;
+            if (!userId) {
+                console.error("Unauthorized access: userId is missing");
+                res.error({error: "Unauthorized", code: HTTP.UNAUTHORIZED});
+                return;
+            }
+
+            console.log("Fetching chats for userId:", userId);
+            const [error, chatParticipants] = await chatServices.getChatsByUser(userId);
+
+            if (error) {
+                console.error("Error fetching chats:", error);
+                res.error({error, code: HTTP.INTERNAL});
+                return;
+            }
+
+            if (!chatParticipants || chatParticipants.length === 0) {
+                console.log("No chats found for userId:", userId);
+                res.success({message: "No chats found", data: [], code: HTTP.NOT_FOUND});
+                return;
+            }
+
+            const chats = chatParticipants.map((cp) => {
+                const chat = cp.chat;
+                const lastMessage = chat.messages?.[0];
+                const otherUser = chat.isGroup
+                    ? null
+                    : chat.participants.find((p) => p.userId !== userId)?.user;
+
+                return {
+                    id: chat.id,
+                    name: chat.isGroup
+                        ? chat.name
+                        : `${otherUser?.firstName ?? ""} ${otherUser?.lastName ?? ""}`.trim(),
+                    isGroup: chat.isGroup,
+                    userId: chat.isGroup ? undefined : otherUser?.id,
+                    lastMessage: lastMessage?.text || lastMessage?.attachment || null,
+                    lastMessageTime: lastMessage?.sentAt || null,
+                    lastMessageSenderId: lastMessage?.senderId || null,
+                    lastMessageType: lastMessage?.type || null 
+                };
+            });
+
+            console.log("Chats fetched successfully for userId:", userId);
+            res.success({
+                message: "Chats fetched successfully",
+                data: chats,
+                code: HTTP.OK,
+            });
+        } catch (err) {
+            console.error("Unexpected error in getChatsByUser:", err);
+            res.error({error: "Internal Server Error", code: HTTP.INTERNAL});
         }
-
-        const [error, chatParticipants] = await chatServices.getChatsByUser(userId);
-
-        if (error) {
-            res.error({error, code: HTTP.INTERNAL});
-            return;
-        }
-
-        if (!chatParticipants || chatParticipants.length === 0) {
-            res.success({message: "No chats found", data: [], code: HTTP.NOT_FOUND});
-            return;
-        }
-
-
-        const chats = chatParticipants.map((cp) => {
-            const chat = cp.chat;
-            const lastMessage = chat.messages[0];
-            const otherUser = chat.isGroup
-                ? null
-                : chat.participants.find((p) => p.userId !== userId)?.user;
-
-            return {
-                id: chat.id,
-                name: chat.isGroup
-                    ? chat.name
-                    : `${otherUser?.firstName ?? ""} ${otherUser?.lastName ?? ""}`.trim(),
-                isGroup: chat.isGroup,
-                userId: chat.isGroup ? undefined : otherUser?.id,
-                lastMessage: lastMessage?.text || lastMessage?.attachment || null,
-                lastMessageTime: lastMessage?.sentAt,
-                lastMessageSenderId: lastMessage?.senderId || null,
-                lastMessageType: lastMessage.type 
-            };
-        });
-
-        res.success({
-            message: "Chats fetched successfully",
-            data: chats,
-            code: HTTP.OK,
-        });
     },
     deleteChatForUser: async (req: Request, res: Response): Promise<void> => {
         const chatId = req.params.chatId;

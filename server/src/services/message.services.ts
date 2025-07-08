@@ -208,8 +208,34 @@ export const messageServices = {
         )
     },
     async markMessageAsRead(messageId: string, userId: string) {
-        return prismaSafe(
-            prisma.messageRead.upsert({
+        console.log(`[DEBUG] markMessageAsRead called with messageId: ${messageId}, userId: ${userId}`);
+        
+        try {
+            // First verify that the message exists and get its chat
+            const message = await prisma.message.findUnique({
+                where: { id: messageId },
+                include: {
+                    chat: {
+                        include: {
+                            participants: true
+                        }
+                    }
+                }
+            });
+
+            if (!message) {
+                console.error(`[DEBUG] Message not found: ${messageId}`);
+                return ["Message not found", null];
+            }
+
+            // Verify user is a participant in the chat
+            if (!message.chat.participants.some(p => p.userId === userId)) {
+                console.error(`[DEBUG] User ${userId} is not a participant in chat ${message.chatId}`);
+                return ["User is not a participant in this chat", null];
+            }
+
+            // Now create/update the read record
+            const result = await prisma.messageRead.upsert({
                 where: {
                     messageId_userId: {
                         messageId,
@@ -224,8 +250,15 @@ export const messageServices = {
                     userId,
                     readAt: new Date()
                 }
-            })
-        )
+            });
+
+            console.log(`[DEBUG] markMessageAsRead successful for messageId: ${messageId}, userId: ${userId}`);
+            console.log(`[DEBUG] Database result:`, result);
+            return [null, result];
+        } catch (error) {
+            console.error(`[DEBUG] Error in markMessageAsRead:`, error);
+            return [error instanceof Error ? error.message : "Unknown error occurred", null];
+        }
     },
 
     async getUnreadMessagesByChat(chatId: string, userId: string) {
@@ -245,13 +278,16 @@ export const messageServices = {
 
     },
     async markAllMessagesAsReadByChat(chatId: string, userId: string) {
+        console.log(`[DEBUG] markAllMessagesAsReadByChat called with chatId: ${chatId}, userId: ${userId}`);
         const [fetchError, unreadMessages] = await this.getUnreadMessagesByChat(chatId, userId);
 
         if (fetchError) {
+            console.error(`[DEBUG] Error fetching unread messages: ${fetchError}`);
             throw new Error('Failed to fetch unread messages');
         }
 
         if (!unreadMessages || !unreadMessages.length) {
+            console.log(`[DEBUG] No unread messages found for chatId: ${chatId}`);
             return {
                 message: 'No unread messages.',
                 success: false,
@@ -259,6 +295,7 @@ export const messageServices = {
             };
         }
 
+        console.log(`[DEBUG] Found ${unreadMessages.length} unread messages for chatId: ${chatId}`);
         const readEntries = unreadMessages.map((msg) => ({
             messageId: msg.id,
             userId,
@@ -273,9 +310,11 @@ export const messageServices = {
         );
 
         if (createError) {
+            console.error(`[DEBUG] Error marking messages as read: ${createError}`);
             throw new Error('Failed to mark messages as read');
         }
 
+        console.log(`[DEBUG] Successfully marked ${readEntries.length} messages as read for chatId: ${chatId}`);
         return {
             message: `${readEntries.length} messages marked as read.`,
             success: true,

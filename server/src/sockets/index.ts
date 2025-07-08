@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
 import chatHandler from "./chat.socket";
 import { socketAuthMiddleware } from "../middlewares/socket.auth.middleware";
+import messageHandler from "./message.socket";
 
 export const setupSockets = (io: Server) => {
     io.use(socketAuthMiddleware);
@@ -17,6 +18,7 @@ export const setupSockets = (io: Server) => {
         });
 
         chatHandler(io, socket);
+        messageHandler(io, socket);
 
         socket.on("disconnect", () => {
             console.log("❌ Disconnected:", socket.id);

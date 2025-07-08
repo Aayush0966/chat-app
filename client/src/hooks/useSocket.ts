@@ -179,6 +179,42 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
             });
         };
 
+        const handleMessageDelivered = (data: { messageId: string, chatId: string }) => {
+            if (selectedChat && data.chatId === selectedChat.id) {
+                setMessages((prev: Message[]) => prev.map(msg => 
+                    msg.id === data.messageId ? { ...msg, delivered: true } : msg
+                ));
+            }
+
+            setMessageCache((prevCache) => {
+                const chatMessages = prevCache[data.chatId] || [];
+                return {
+                    ...prevCache,
+                    [data.chatId]: chatMessages.map(msg => 
+                        msg.id === data.messageId ? { ...msg, delivered: true } : msg
+                    )
+                };
+            });
+        };
+
+        const handleMessageRead = (data: { messageId: string, chatId: string, userId: string }) => {
+            if (selectedChat && data.chatId === selectedChat.id) {
+                setMessages((prev: Message[]) => prev.map(msg => 
+                    msg.id === data.messageId ? { ...msg, readBy: [...(msg.readBy || []), data.userId] } : msg
+                ));
+            }
+
+            setMessageCache((prevCache) => {
+                const chatMessages = prevCache[data.chatId] || [];
+                return {
+                    ...prevCache,
+                    [data.chatId]: chatMessages.map(msg => 
+                        msg.id === data.messageId ? { ...msg, readBy: [...(msg.readBy || []), data.userId] } : msg
+                    )
+                };
+            });
+        };
+
         socket.on("connect", handleConnect);
         socket.on("disconnect", handleDisconnect);
         socket.on("reconnect", handleReconnect);
@@ -187,6 +223,33 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
         socket.on("startTyping", handleStartTyping);
         socket.on("stopTyping", handleStopTyping);
         socket.on("messageDeleted", handleMessageDeleted);
+        socket.on("messageDelivered", handleMessageDelivered);
+        socket.on("messageRead", handleMessageRead);
+        socket.on("chat:readAll:notify", (data: { chatId: string, userId: string }) => {
+            if (selectedChat && data.chatId === selectedChat.id) {
+                // Update all messages in this chat as read by this user
+                setMessages((prev: Message[]) => prev.map(msg => ({
+                    ...msg,
+                    readBy: msg.readBy ? 
+                        msg.readBy.includes(data.userId) ? msg.readBy : [...msg.readBy, data.userId]
+                        : [data.userId]
+                })));
+
+                // Update message cache
+                setMessageCache((prevCache) => {
+                    const chatMessages = prevCache[data.chatId] || [];
+                    return {
+                        ...prevCache,
+                        [data.chatId]: chatMessages.map(msg => ({
+                            ...msg,
+                            readBy: msg.readBy ?
+                                msg.readBy.includes(data.userId) ? msg.readBy : [...msg.readBy, data.userId]
+                                : [data.userId]
+                        }))
+                    };
+                });
+            }
+        });
 
         // If already connected when mounting, emit userConnected
         if (socket.connected && currentUser?.id) {
@@ -203,6 +266,9 @@ export const useSocket = ({ setMessages, setChats, setMessageCache, selectedChat
             socket.off("startTyping", handleStartTyping);
             socket.off("stopTyping", handleStopTyping);
             socket.off("messageDeleted", handleMessageDeleted);
+            socket.off("messageDelivered", handleMessageDelivered);
+            socket.off("messageRead", handleMessageRead);
+            socket.off("chat:readAll:notify");
         };
     }, [setMessages, setChats, setMessageCache, selectedChat, currentUser]);
 

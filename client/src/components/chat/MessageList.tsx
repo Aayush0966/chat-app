@@ -172,11 +172,18 @@ const MessageList = ({
                     {msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : "Unknown"}
                   </div>
                 )}
-                <div className={`p-4 rounded-2xl shadow-sm transition-all duration-200 relative backdrop-blur-sm ${
-                  isOwn 
-                    ? "bg-primary text-primary-foreground ml-auto" 
-                    : "bg-background/80 border border-border/50 text-foreground"
-                }`}>
+                <div 
+                  className={`p-4 rounded-2xl transition-all duration-200 relative group/message ${
+                    isOwn 
+                      ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white ml-auto shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30" 
+                      : "bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 border border-border/50 text-foreground shadow-lg hover:shadow-xl dark:shadow-zinc-900/30"
+                  }`}
+                  style={{
+                    clipPath: isOwn 
+                      ? "polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%)"
+                      : "polygon(0 0, 100% 0, 100% 100%, 5% 100%, 0 85%)"
+                  }}
+                >
                   {msg.type === "ATTACHMENT" && msg.attachment ? (
                     <div className="space-y-2">
                       <div className="relative">
@@ -203,10 +210,40 @@ const MessageList = ({
                   ) : (
                     <p className="text-sm leading-relaxed">{msg.text}</p>
                   )}
-                  <div className={`text-xs mt-2 font-medium ${
-                    isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
-                  }`}>
-                    {formatTime(msg.sentAt)}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className={`text-xs font-medium ${
+                      isOwn ? "text-white/90" : "text-muted-foreground"
+                    }`}>
+                      {formatTime(msg.sentAt)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {isOwn && (
+                        <>
+                          {msg.readBy && msg.readBy.length > 0 ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500"></div>
+                              <span className="text-xs font-medium text-emerald-500 dark:text-emerald-400">
+                                Read
+                              </span>
+                            </div>
+                          ) : msg.delivered ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 rounded-full bg-blue-400 dark:bg-blue-500"></div>
+                              <span className="text-xs font-medium text-blue-500 dark:text-blue-400">
+                                Delivered
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500"></div>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Sent
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                   
                   <Button

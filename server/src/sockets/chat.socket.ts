@@ -1,5 +1,4 @@
 import { Server, Socket } from "socket.io";
-import { Message } from "../types/chat.types";
 import { chatServices } from "../services/chat.services";
 import { userServices } from "../services/user.services";
 
@@ -38,25 +37,6 @@ export default function chatHandler(io: Server, socket: Socket) {
             }
         }
     };
-
-    socket.on("newMessage", async (message: Message) => {
-        const [err, chatParticipants] = await chatServices.getChatParticipantsByChatId(message.chatId)
-        if (err || !chatParticipants) {
-            socket.emit("message_error", {
-                message: "Failed to send messages",
-                details: err,
-            });
-            return;
-        }
-
-        const receiver = chatParticipants?.filter((chatParticipant) => chatParticipant.userId !== message.senderId)
-
-        for (const user of receiver) {
-            io.to(user.userId).emit("newMessage", {
-                message
-            })
-        }
-    })
 
     socket.on("userConnected", async (userId: string) => {
         const user = await userServices.getUserById(userId);
@@ -155,27 +135,6 @@ export default function chatHandler(io: Server, socket: Socket) {
 
         typingTimeouts.set(timeoutKey, timeout);
     })
-
-    socket.on("messageDelete", async (data: { messageId: string, chatId: string, deletedBy: string }) => {
-        const [err, chatParticipants] = await chatServices.getChatParticipantsByChatId(data.chatId)
-        if (err || !chatParticipants) {
-            socket.emit("message_error", {
-                message: "Failed to get chat participants",
-                details: err,
-            });
-            return;
-        }
-
-        const otherParticipants = chatParticipants.filter(participant => participant.userId !== data.deletedBy);
-
-        for (const participant of otherParticipants) {
-            io.to(participant.userId).emit("messageDeleted", {
-                messageId: data.messageId,
-                chatId: data.chatId,
-                deletedBy: data.deletedBy
-            });
-        }
-    });
 
     socket.on("stopTyping", async (typingDetails) => {
         const [err, chatParticipants] = await chatServices.getChatParticipantsByChatId(typingDetails.chatId)

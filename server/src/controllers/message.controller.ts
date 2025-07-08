@@ -335,6 +335,11 @@ export const messageController = {
             return;
         }
 
+        if (messages?.length == 0) {
+            res.error({error:"No unread messages available", code:HTTP.NOT_FOUND})
+            return;
+        }
+
         res.success({
             success: true,
             code: HTTP.OK,

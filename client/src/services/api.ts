@@ -172,4 +172,11 @@ export const sendImageMessage = async (chatId: string, file: File) => {
   return res.data;
 };
 
+export const getUnreadMessages = async (chatId: string) => {
+  const res = await axios.get(`${BASE_URL}/api/message/unread/${chatId}`, {
+    withCredentials: true,
+  });
+  return res.data;
+};
+
 
