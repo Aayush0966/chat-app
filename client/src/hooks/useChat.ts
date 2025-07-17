@@ -417,6 +417,40 @@ export const useChat = () => {
     }
   };
 
+  const handleCreateGroupChat = async (participantIds: string[], groupName: string) => {
+    if (!currentUser?.id) {
+      console.error("No current user available");
+      return;
+    }
+    try {
+      const res = await createChat({
+        participantIds: [currentUser.id, ...participantIds.filter(id => id !== currentUser.id)],
+        creatorId: currentUser.id,
+        isGroup: true,
+        name: groupName,
+      });
+      const chatId = res?.details?.id || res?.data?.chatId;
+      if (chatId) {
+        const newChat: Chat = {
+          id: chatId,
+          name: groupName,
+          isGroup: true,
+          lastMessage: null,
+          lastMessageTime: null,
+          lastMessageType: null
+        };
+        setChats(prev => [newChat, ...prev]);
+        setSelectedChat(newChat);
+        setShowNewChat(false);
+        setUserSearchQuery("");
+        setSearchedUsers([]);
+        setIsMobileSidebarOpen(false);
+      }
+    } catch (err) {
+      console.error("Failed to create group chat:", err);
+    }
+  };
+
   const handleDeleteChat = async (chatId: string) => {
     try {
       await deleteChatForUser(chatId);
@@ -647,6 +681,7 @@ export const useChat = () => {
     handleSend,
     handleUserSearch,
     handleCreateChat,
+    handleCreateGroupChat,
     handleDeleteChat,
     handleDeleteMessage,
     handleReactToMessage,

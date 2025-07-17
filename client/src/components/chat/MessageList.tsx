@@ -242,7 +242,7 @@ const MessageList = ({
             >
               <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"} relative`}>
                 {showSender && (
-                  <div className="text-xs text-muted-foreground mb-1 px-4 font-medium">
+                  <div className="text-xs text-blue-700 font-semibold mb-1 px-4">
                     {msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : "Unknown"}
                   </div>
                 )}
