@@ -36,6 +36,7 @@ const HomePage = () => {
     handleTyping,
     handleUserSearch,
     handleCreateChat,
+    handleCreateGroupChat,
     handleDeleteChat,
     handleDeleteMessage,
     handleReactToMessage,
@@ -53,6 +54,7 @@ const HomePage = () => {
         searchedUsers={searchedUsers}
         onUserSearch={handleUserSearch}
         onCreateChat={handleCreateChat}
+        onCreateGroupChat={handleCreateGroupChat}
         onClose={() => setShowNewChat(false)}
       />
     );

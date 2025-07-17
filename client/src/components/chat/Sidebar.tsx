@@ -249,9 +249,9 @@ const Sidebar = ({
                         : "from-muted to-muted/60"
                     }`}>
                       {chat.isGroup ? (
-                        <Users className="h-5 w-5" />
+                        <Users className="h-6 w-6 text-blue-600" />
                       ) : (
-                        <span className="text-sm">{getInitials(chat.name)}</span>
+                        getInitials(chat.name)
                       )}
                     </div>
                     {!chat.isGroup && onlineUsers[chat.userId!] && (
@@ -259,24 +259,15 @@ const Sidebar = ({
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-medium text-foreground truncate">{chat.name}</h3>
-                      {chat.lastMessageTime && (
-                        <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                          {formatTime(chat.lastMessageTime)}
-                        </span>
-                      )}
+                    <div className="font-semibold text-foreground truncate">
+                      {chat.isGroup ? chat.name : chat.name}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {!chat.isGroup && onlineUsers[chat.userId!] && (
-                        <Circle className="h-2 w-2 fill-green-500 text-green-500" />
-                      )}
-                      <p className="text-sm text-muted-foreground truncate">
-                        {chat.lastMessage
-                          ? (currentUser?.id === chat.lastMessageSenderId ? "You: " : "") + (chat.lastMessageType === 'TEXT' ? chat.lastMessage : 'image')
-                          : (chat.isGroup ? "No messages yet" : "Start a conversation")}
-                      </p>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {chat.lastMessage ? chat.lastMessage : "No messages yet"}
                     </div>
+                  </div>
+                  <div className="ml-2 text-xs text-muted-foreground">
+                    {chat.lastMessageTime ? formatTime(chat.lastMessageTime) : ""}
                   </div>
                 </div>
                 
