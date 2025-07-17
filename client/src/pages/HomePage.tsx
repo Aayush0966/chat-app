@@ -38,6 +38,7 @@ const HomePage = () => {
     handleCreateChat,
     handleDeleteChat,
     handleDeleteMessage,
+    handleReactToMessage,
     handleLogout,
     handleChatSelect,
     handleSendImage,
@@ -102,6 +103,7 @@ const HomePage = () => {
               loadingOlderMessages={loadingOlderMessages}
               hasMoreMessages={hasMoreMessages}
               onDeleteMessage={handleDeleteMessage}
+              onReactToMessage={handleReactToMessage}
               onLoadOlderMessages={loadOlderMessages}
               socket={socket}
             />

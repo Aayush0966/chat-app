@@ -465,6 +465,21 @@ export const useChat = () => {
     }
   };
 
+  const handleReactToMessage = async (messageId: string, emoji: string) => {
+    if (!selectedChat || !currentUser?.id) return;
+
+    try {
+      // Emit reaction via socket
+      socket.emit("message:react", messageId, selectedChat.id, emoji, (response: { success: boolean; error?: string }) => {
+        if (!response?.success) {
+          console.error("Failed to react to message:", response?.error);
+        }
+      });
+    } catch (err) {
+      console.error("Failed to react to message:", err);
+    }
+  };
+
   const handleLogout = async () => {
     // Clean up typing state before logout
     if (isTyping && typingTimeout) {
@@ -634,6 +649,7 @@ export const useChat = () => {
     handleCreateChat,
     handleDeleteChat,
     handleDeleteMessage,
+    handleReactToMessage,
     handleLogout,
     handleTyping,
     handleChatSelect,

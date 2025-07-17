@@ -7,3 +7,4 @@ export { default as EmptyState } from './EmptyState';
 export { default as ImageUpload } from './ImageUpload';
 export { default as ImageLightbox } from './ImageLightbox';
 export { default as ImageSkeleton } from './ImageSkeleton';
+export { default as MessageReactions } from './MessageReactions';

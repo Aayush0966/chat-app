@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ImageLightbox } from "@/components/chat";
+import { ImageLightbox, MessageReactions } from "@/components/chat";
 import type { Message, User, Chat } from "@/types/user";
 import { 
   MoreVertical,
@@ -18,6 +18,7 @@ interface MessageListProps {
   hasMoreMessages: boolean;
   typingText?: string;
   onDeleteMessage: (messageId: string, deleteForBoth: boolean) => void;
+  onReactToMessage: (messageId: string, emoji: string) => void;
   onLoadOlderMessages: () => void;
   socket?: { emit: (event: string, ...args: unknown[]) => void }; // Add socket prop for emitting read events
 }
@@ -31,6 +32,7 @@ const MessageList = ({
   hasMoreMessages,
   typingText,
   onDeleteMessage,
+  onReactToMessage,
   onLoadOlderMessages,
   socket
 }: MessageListProps) => {
@@ -317,6 +319,14 @@ const MessageList = ({
                       )}
                     </div>
                   </div>
+                  
+                  {/* Message Reactions */}
+                  <MessageReactions
+                    reactions={msg.reactions || []}
+                    onReact={(emoji) => onReactToMessage(msg.id, emoji)}
+                    currentUserId={currentUser?.id || ''}
+                    isOwn={isOwn}
+                  />
                   
                   <Button
                     variant="ghost"
