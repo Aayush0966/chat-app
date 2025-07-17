@@ -19,6 +19,7 @@ interface MessageListProps {
   typingText?: string;
   onDeleteMessage: (messageId: string, deleteForBoth: boolean) => void;
   onLoadOlderMessages: () => void;
+  socket?: { emit: (event: string, ...args: unknown[]) => void }; // Add socket prop for emitting read events
 }
 
 const MessageList = ({ 
@@ -30,14 +31,17 @@ const MessageList = ({
   hasMoreMessages,
   typingText,
   onDeleteMessage,
-  onLoadOlderMessages
+  onLoadOlderMessages,
+  socket
 }: MessageListProps) => {
   const [showMessageOptions, setShowMessageOptions] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{src: string, alt: string} | null>(null);
   const [hasInitiallyScrolled, setHasInitiallyScrolled] = useState(false);
+  const [readMessages, setReadMessages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const scrollToBottom = (smooth = true) => {
     messagesEndRef.current?.scrollIntoView({ 
@@ -107,6 +111,65 @@ const MessageList = ({
     };
   }, []);
 
+  // Intersection Observer to mark messages as read when they come into view
+  useEffect(() => {
+    if (!currentUser?.id || !socket || messages.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const messageId = entry.target.getAttribute('data-message-id');
+            const senderId = entry.target.getAttribute('data-sender-id');
+            
+            // Only mark as read if:
+            // 1. Message ID exists
+            // 2. Message is not sent by current user (don't read own messages)
+            // 3. Message hasn't been read before
+            if (messageId && senderId !== currentUser.id && !readMessages.has(messageId)) {
+              console.log('🔍 Marking message as read:', messageId);
+              setReadMessages(prev => new Set(prev).add(messageId));
+              
+              // Emit read event to server
+              socket.emit("message:read", messageId, selectedChat.id, (response: { success: boolean }) => {
+                if (response?.success) {
+                  console.log('✅ Message marked as read successfully:', messageId);
+                } else {
+                  console.error('❌ Failed to mark message as read:', messageId);
+                }
+              });
+            }
+          }
+        });
+      },
+      {
+        root: containerRef.current,
+        rootMargin: '-20px 0px', // Only trigger when message is 20px into view
+        threshold: 0.3 // 30% of message must be visible
+      }
+    );
+
+    // Add a small delay to ensure DOM elements are ready
+    const timeoutId = setTimeout(() => {
+      messageRefs.current.forEach((element, messageId) => {
+        if (element) {
+          observer.observe(element);
+          console.log('👀 Observing message:', messageId);
+        }
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [currentUser?.id, socket, selectedChat.id, readMessages, messages.length]);
+
+  // Reset read messages when chat changes
+  useEffect(() => {
+    setReadMessages(new Set());
+  }, [selectedChat.id]);
+
   // Handle scroll event for loading older messages
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop } = e.currentTarget;
@@ -165,6 +228,15 @@ const MessageList = ({
             <div
               key={msg.id}
               className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2 group`}
+              data-message-id={msg.id}
+              data-sender-id={msg.senderId}
+              ref={(el) => {
+                if (el) {
+                  messageRefs.current.set(msg.id, el);
+                } else {
+                  messageRefs.current.delete(msg.id);
+                }
+              }}
             >
               <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"} relative`}>
                 {showSender && (

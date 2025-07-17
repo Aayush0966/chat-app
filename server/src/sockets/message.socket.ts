@@ -100,7 +100,7 @@ export default function messageHandler(io: Server, socket: Socket) {
             }
 
             chatParticipants.forEach(participant => {
-                io.to(participant.userId).emit("message:notify", {
+                io.to(participant.userId).emit("messageRead", {
                     messageId,
                     userId: user.id,
                     chatId
