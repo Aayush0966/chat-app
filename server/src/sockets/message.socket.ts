@@ -18,7 +18,7 @@ export default function messageHandler(io: Server, socket: Socket) {
         try {
             const tempId = message.id;
             const [err, result] = await messageServices.sendMessage(message);
-            
+
             if (err || !result) {
                 console.error(`[DEBUG] Failed to save message: ${err}`);
                 callback?.({ success: false, error: err, tempId });
@@ -32,7 +32,7 @@ export default function messageHandler(io: Server, socket: Socket) {
 
             const savedMessage = result;
             const [participantsErr, chatParticipants] = await chatServices.getChatParticipantsByChatId(message.chatId);
-            
+
             if (participantsErr || !chatParticipants) {
                 console.error(`[DEBUG] Failed to get chat participants: ${participantsErr}`);
                 callback?.({ success: false, error: "Failed to notify other participants" });
@@ -77,7 +77,7 @@ export default function messageHandler(io: Server, socket: Socket) {
 
     socket.on("message:read", async (messageId: string, chatId: string, callback?: (response: any) => void) => {
         const user = socket.data.user;
-        
+
         if (!messageId || !chatId || !user) {
             console.error("[DEBUG] Invalid messageId, chatId, or user");
             callback?.({ success: false, error: "Invalid parameters" });
@@ -92,7 +92,7 @@ export default function messageHandler(io: Server, socket: Socket) {
                 return;
             }
             const [participantsErr, chatParticipants] = await chatServices.getChatParticipantsByChatId(chatId);
-            
+
             if (participantsErr || !chatParticipants) {
                 console.error(`[DEBUG] Failed to get chat participants: ${participantsErr}`);
                 callback?.({ success: false, error: "Failed to notify other participants" });
@@ -150,4 +150,43 @@ export default function messageHandler(io: Server, socket: Socket) {
 
         io.to(chatId).emit("messageDelivered", { messageId, chatId });
     });
+
+    socket.on("message:react", async (messageId: string, chatId: string, reaction: string, callback?: (response: any) => void) => {
+        const user = socket.data.user;
+        if (!messageId || !reaction || !chatId) {
+            callback?.({ success: false, error: "Invalid parameters" });
+            return;
+        }
+
+        try {
+            const [err, result] = await messageServices.markMessageReactForUser(messageId, user.id, reaction);
+            if (err || !result) {
+                callback?.({ success: false, error: err });
+                return;
+            }
+            const [participantsErr, chatParticipants] = await chatServices.getChatParticipantsByChatId(chatId);
+
+            if (participantsErr || !chatParticipants) {
+                console.error(`[DEBUG] Failed to get chat participants: ${participantsErr}`);
+                callback?.({ success: false, error: "Failed to notify other participants" });
+                return;
+            }
+
+            chatParticipants.forEach(participant => {
+                io.to(participant.userId).emit("messageReacted", {
+                    messageId,
+                    userId: user.id,
+                    reaction
+                });
+            });
+
+            callback?.({ success: true });
+        } catch (error) {
+            console.error("[DEBUG] Error in message:read handler:", error);
+            callback?.({ success: false, error: "Internal server error" });
+            return;
+        }
+
+
+    })
 }

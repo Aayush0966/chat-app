@@ -342,7 +342,49 @@ export const messageServices = {
                 }
             })
         );
-    }
+    },
+
+    async markMessageReactForUser(messageId: string, userId: string, reaction: string) {
+        // First check if user already reacted with this emoji
+        const existingReaction = await prisma.messageReaction.findFirst({
+            where: {
+                messageId,
+                userId,
+                emoji: reaction
+            }
+        });
+
+        if (existingReaction) {
+            // Remove the reaction (toggle off)
+            return await prismaSafe(
+                prisma.messageReaction.delete({
+                    where: {
+                        id: existingReaction.id
+                    }
+                })
+            );
+        } else {
+            // Remove any other reactions from this user for this message (only one reaction per user per message)
+            await prisma.messageReaction.deleteMany({
+                where: {
+                    messageId,
+                    userId
+                }
+            });
+
+            // Add new reaction
+            return await prismaSafe(
+                prisma.messageReaction.create({
+                    data: {
+                        messageId,
+                        emoji: reaction,
+                        userId
+                    }
+                })
+            );
+        }
+    },
+
 
 
 

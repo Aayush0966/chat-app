@@ -54,6 +54,14 @@ export interface Chat {
   lastMessageType?: string | null;
 }
 
+export interface MessageReaction {
+  id: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  reactedAt: string;
+}
+
 export interface Message {
   id: string;
   chatId: string;
@@ -71,6 +79,7 @@ export interface Message {
   };
   readBy?: string[]; // Array of user IDs who have read the message
   delivered?: boolean; // Indicates if the message has been delivered
+  reactions?: MessageReaction[]; // Array of reactions on the message
 }
 
 export interface SendMessageInput {
