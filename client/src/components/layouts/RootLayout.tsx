@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 const RootLayout = () => {
   return (
-    <div className="min-h-screen w-full bg-muted/10 dark">
+    <div className="min-h-screen w-full bg-muted/10">
       {/* Ambient background effects */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
