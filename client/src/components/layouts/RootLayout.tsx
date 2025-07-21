@@ -3,15 +3,15 @@ import { Toaster } from "@/components/ui/sonner";
 
 const RootLayout = () => {
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-background via-background to-muted/20 dark">
+    <div className="min-h-screen w-full bg-muted/10">
       {/* Ambient background effects */}
       <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 pointer-events-none" />
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-20 pointer-events-none" />
       
       {/* Main content with glass effect container */}
-      <div className="relative z-10 min-h-screen flex p-4 lg:p-8">
-        <div className="w-full max-w-7xl mx-auto bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl lg:rounded-3xl shadow-2xl overflow-hidden">
+      <div className="relative z-10 h-screen flex">
+        <div className="w-full h-full bg-background/80 backdrop-blur-xl border-0 shadow-2xl overflow-hidden">
           <Toaster
             position="top-right"
             toastOptions={{

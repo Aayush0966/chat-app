@@ -199,10 +199,10 @@ const MessageList = ({
   return (
     <div 
       ref={containerRef}
-      className="flex-1 overflow-y-auto bg-background/20 scrollbar-hide"
+      className="flex-1 overflow-y-auto bg-gradient-to-b from-background/50 to-muted/10 scrollbar-hide"
       onScroll={handleScroll}
     >
-      <div className="min-h-full flex flex-col justify-end p-4 space-y-4">
+      <div className="min-h-full flex flex-col justify-end p-6 space-y-4">
         {/* Loading indicator for older messages */}
         {loadingOlderMessages && (
           <div className="flex justify-center py-4">
@@ -211,7 +211,7 @@ const MessageList = ({
         )}
         
         {messagesLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {[...Array(3)].map((_, i) => (
             <div key={i} className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}>
               <div className="max-w-[70%]">
@@ -229,7 +229,7 @@ const MessageList = ({
           return (
             <div
               key={msg.id}
-              className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2 group`}
+              className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-4 group animate-in fade-in-0 slide-in-from-bottom-2 duration-300`}
               data-message-id={msg.id}
               data-sender-id={msg.senderId}
               ref={(el) => {
@@ -240,22 +240,22 @@ const MessageList = ({
                 }
               }}
             >
-              <div className={`max-w-[70%] ${isOwn ? "order-2" : "order-1"} relative`}>
+              <div className={`max-w-[75%] ${isOwn ? "order-2" : "order-1"} relative`}>
                 {showSender && (
-                  <div className="text-xs text-blue-700 font-semibold mb-1 px-4">
+                  <div className="text-xs text-primary font-semibold mb-2 px-4">
                     {msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : "Unknown"}
                   </div>
                 )}
                 <div 
-                  className={`p-4 rounded-2xl transition-all duration-200 relative group/message ${
+                  className={`px-4 py-3 rounded-2xl transition-all duration-200 relative group/message shadow-lg hover:shadow-xl ${
                     isOwn 
-                      ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white ml-auto shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30" 
-                      : "bg-gradient-to-br from-white to-gray-50 dark:from-zinc-800 dark:to-zinc-900 border border-border/50 text-foreground shadow-lg hover:shadow-xl dark:shadow-zinc-900/30"
+                      ? "bg-gradient-to-br from-primary to-primary/90 text-primary-foreground ml-auto shadow-primary/20 hover:shadow-primary/30" 
+                      : "bg-card/95 backdrop-blur-sm border border-border/30 text-foreground hover:border-border/50"
                   }`}
                   style={{
-                    clipPath: isOwn 
-                      ? "polygon(0 0, 100% 0, 100% 85%, 95% 100%, 0 100%)"
-                      : "polygon(0 0, 100% 0, 100% 100%, 5% 100%, 0 85%)"
+                    borderRadius: isOwn 
+                      ? "20px 20px 6px 20px"
+                      : "20px 20px 20px 6px"
                   }}
                 >
                   {msg.type === "ATTACHMENT" && msg.attachment ? (
@@ -264,7 +264,7 @@ const MessageList = ({
                         <img
                           src={msg.attachment}
                           alt="Shared image"
-                          className={`rounded-lg max-w-full h-auto max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity ${
+                          className={`rounded-xl max-w-full h-auto max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity ${
                             msg.isUploading ? 'opacity-70' : ''
                           }`}
                           onClick={() => !msg.isUploading && setLightboxImage({src: msg.attachment!, alt: "Shared image"})}
@@ -272,52 +272,43 @@ const MessageList = ({
                           loading="lazy"
                         />
                         {msg.isUploading && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-                            <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg border">
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
+                            <div className="bg-card/95 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center gap-3 shadow-lg border border-border/50">
                               <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
-                              <span className="text-sm font-medium text-foreground">Processing image...</span>
+                              <span className="text-sm font-medium text-foreground">Uploading...</span>
                             </div>
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                    <p className={`text-sm leading-relaxed ${
+                      isOwn ? 'text-primary-foreground' : 'text-foreground'
+                    }`}>
+                      {msg.text}
+                    </p>
                   )}
-                  <div className="flex items-center gap-2 mt-2">
+                  
+                  {/* Time and Status Row */}
+                  <div className="flex items-center justify-end gap-2 mt-2">
                     <span className={`text-xs font-medium ${
-                      isOwn ? "text-white/90" : "text-muted-foreground"
+                      isOwn ? "text-primary-foreground/70" : "text-muted-foreground"
                     }`}>
                       {formatTime(msg.sentAt)}
                     </span>
-                    <div className="flex items-center gap-1">
-                      {isOwn && (
-                        <>
-                          {msg.readBy && msg.readBy.length > 0 ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded-full bg-emerald-400 dark:bg-emerald-500"></div>
-                              <span className="text-xs font-medium text-emerald-500 dark:text-emerald-400">
-                                Read
-                              </span>
-                            </div>
-                          ) : msg.delivered ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded-full bg-blue-400 dark:bg-blue-500"></div>
-                              <span className="text-xs font-medium text-blue-500 dark:text-blue-400">
-                                Delivered
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded-full bg-gray-400 dark:bg-gray-500"></div>
-                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                                Sent
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    {isOwn && (
+                      <div className="flex items-center gap-1">
+                        {msg.readBy && msg.readBy.length > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-primary-foreground/70">✓✓</span>
+                          </div>
+                        ) : msg.delivered ? (
+                          <span className="text-xs text-primary-foreground/70">✓</span>
+                        ) : (
+                          <span className="text-xs text-primary-foreground/50">⏱</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {/* Message Reactions */}
@@ -331,8 +322,10 @@ const MessageList = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className={`absolute -right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${
-                      isOwn ? 'bg-background/20 hover:bg-background/30 text-primary-foreground' : 'bg-primary/10 hover:bg-primary/20 text-foreground'
+                    className={`absolute -right-2 top-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity rounded-full ${
+                      isOwn 
+                        ? 'bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground/70' 
+                        : 'bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground'
                     }`}
                     onClick={() => setShowMessageOptions(showMessageOptions === msg.id ? null : msg.id)}
                   >
@@ -340,34 +333,37 @@ const MessageList = ({
                   </Button>
                   
                   {showMessageOptions === msg.id && (
-                    <div className="absolute right-0 top-10 bg-background/95 backdrop-blur-md border border-border/50 rounded-lg shadow-lg z-10 min-w-[160px]">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          onDeleteMessage(msg.id, false);
-                          setShowMessageOptions(null);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete for me
-                      </Button>
-                      {isOwn && (
+                    <>
+                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowMessageOptions(null)} />
+                      <div className={`absolute ${isOwn ? 'right-0' : 'left-0'} top-8 bg-card/95 backdrop-blur-sm border border-border/30 rounded-xl shadow-2xl z-[9999] min-w-[160px] py-2 animate-in slide-in-from-top-2 duration-200`}>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                          className="w-full justify-start text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 text-sm rounded-lg mx-1"
                           onClick={() => {
-                            onDeleteMessage(msg.id, true);
+                            onDeleteMessage(msg.id, false);
                             setShowMessageOptions(null);
                           }}
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete for everyone
+                          <Trash2 className="h-4 w-4 mr-3" />
+                          Delete for me
                         </Button>
-                      )}
-                    </div>
+                        {isOwn && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 text-sm rounded-lg mx-1"
+                            onClick={() => {
+                              onDeleteMessage(msg.id, true);
+                              setShowMessageOptions(null);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-3" />
+                            Delete for everyone
+                          </Button>
+                        )}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
