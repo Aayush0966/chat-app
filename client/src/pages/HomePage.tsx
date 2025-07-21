@@ -61,7 +61,7 @@ const HomePage = () => {
   }
 
   return (
-    <div className="h-full max-h-[calc(100vh-4rem)] lg:max-h-[calc(100vh-8rem)] w-full flex relative overflow-hidden bg-background/60 backdrop-blur-sm">
+    <div className="h-screen w-full flex relative overflow-hidden">
       {isMobileSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
@@ -85,7 +85,7 @@ const HomePage = () => {
         onlineUsers={onlineUsers}
       />
       
-      <div className="flex-1 flex flex-col min-h-0 bg-background/40 backdrop-blur-sm">
+      <div className="flex-1 flex flex-col min-h-0 bg-card/95 backdrop-blur-sm border border-border/20 shadow-2xl m-2 ml-0 rounded-r-xl overflow-hidden">
         {!selectedChat ? (
           <EmptyState onNewChat={() => setShowNewChat(true)} />
         ) : (

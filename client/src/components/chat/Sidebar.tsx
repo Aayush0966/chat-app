@@ -101,16 +101,16 @@ const Sidebar = ({
   })
 
   return (
-    <div className={`w-80 flex flex-col z-50 bg-background/95 backdrop-blur-xl border-r border-border/50 md:relative absolute inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-all duration-300 ease-in-out shadow-2xl md:shadow-none`}>
+    <div className={`w-80 flex flex-col z-50 bg-card/95 backdrop-blur-sm border-r border-border/20 md:relative absolute inset-y-0 left-0 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-all duration-300 ease-in-out shadow-2xl m-2 mr-0 rounded-l-xl overflow-hidden`}>
       {/* Header Section */}
-      <div className="p-6 border-b border-border/50 bg-gradient-to-b from-background/80 to-background/60 backdrop-blur-sm">
+      <div className="p-6 border-b border-border/20 bg-gradient-to-br from-primary/5 to-transparent">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg ring-1 ring-primary/20">
-              <MessageSquare className="h-5 w-5 text-primary-foreground" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center shadow-lg border border-primary/20">
+              <MessageSquare className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold text-foreground gradient-text">
                 ChatFlow
               </h1>
               <div className="text-xs text-muted-foreground flex items-center gap-1.5">
